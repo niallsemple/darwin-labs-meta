@@ -5,8 +5,8 @@ Orchestrates the full AI pipeline:
 2. Run decay detection (deterministic)
 3. Run AI board meeting (agents analyse library)
 4. Generate HTML dashboard
-5. Update meta-learning loop
-6. Write meta-report
+5. Update meta-learning loop + write meta-report
+6. Self-Improvement cycle (scouts GitHub, evaluates, implements)
 7. Git commit + push
 
 Usage: python3 scripts/ai_daily_run.py
@@ -28,6 +28,7 @@ from darwin_meta.ai_board_meeting import generate_ai_boardMeeting
 from darwin_meta.loops.meta_learning import MetaLearningLoop
 from darwin_meta.loops.decay_detection import scan_library, render_decay_report
 from darwin_meta.utils.dashboard import generate_dashboard
+from darwin_meta.self_improve.loop import run_one_cycle as run_self_improve
 
 
 def sh(cmd: list[str], timeout: int = 120) -> tuple[int, str]:
@@ -77,7 +78,7 @@ def main() -> None:
     except Exception as e:
         summary["steps"]["ai_board_meeting"] = {"status": "error", "error": str(e)}
         print(f"AI Board Meeting failed: {e}")
-        decay_reports = []  # fallback for dashboard
+        decay_reports = []
 
     # 4. Dashboard generation
     try:
@@ -106,7 +107,22 @@ def main() -> None:
         summary["steps"]["meta_report"] = {"status": "error", "error": str(e)}
         print(f"Meta report failed: {e}")
 
-    # 6. Git commit + push
+    # 6. Self-Improvement Cycle (scouts GitHub, evaluates, implements)
+    try:
+        si_summary = run_self_improve(llm=llm, max_repos=2, min_confidence=0.75, max_implementations=1)
+        summary["steps"]["self_improve"] = {
+            "status": "ok",
+            "repos_evaluated": si_summary.get("repos_evaluated", 0),
+            "approved": len(si_summary.get("approved", [])),
+            "implemented": len(si_summary.get("implemented", [])),
+        }
+        print(f"Self-improve: {si_summary['repos_evaluated']} evaluated, "
+              f"{len(si_summary['approved'])} approved, {len(si_summary['implemented'])} implemented")
+    except Exception as e:
+        summary["steps"]["self_improve"] = {"status": "error", "error": str(e)}
+        print(f"Self-improve failed: {e}")
+
+    # 7. Git commit + push
     rc, out = sh(["git", "add", "-A"])
     rc2, out2 = sh(["git", "-c", "user.name=darwin-meta",
                     "-c", "user.email=darwin@local",
@@ -125,7 +141,7 @@ def main() -> None:
     else:
         print("Git: push skipped or failed:", out3[:200])
 
-    # 7. Summary
+    # 8. Summary
     print(f"\nDARWIN_AI_SUMMARY={json.dumps(summary)}")
 
 
