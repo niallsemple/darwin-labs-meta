@@ -1,0 +1,566 @@
+[
+  {
+    "id": "D-0001",
+    "title": "[H1] Monday-long / Thursday-short day-of-week effect",
+    "lab": "hl_crypto",
+    "status": "CANDIDATE",
+    "created": "2026-08-09T17:27:27+00:00",
+    "freeze_ts": null,
+    "hypothesis": "Monday-long / Thursday-short day-of-week effect",
+    "falsifiable_prediction": "Monday mean 1h return > 0 and Thursday < 0 for the\n  11 long-history coins in the *next* 8+ weeks of data; basket test (equal-weight\n  long Monday / short Thursday) positive net of fees.",
+    "kill_criteria": "",
+    "metrics": {
+      "effect_size": null,
+      "effect_unit": "",
+      "n": null,
+      "t_stat": null,
+      "p_value": null,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "strengthened",
+    "lineage": [
+      "D-0006"
+    ],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Observation (2026-08-06, n≈29 weeks, 1h bars):** mean 1h return on Mondays is positive across all four pairs (BTC +2.7, ETH +4.9, SOL +3.8, HYPE +6.2 bps/h); Thursdays negative for BTC/ETH/SOL (−4.0 to −6.5 bps/h), but NOT for HYPE (+2.3).",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Cross-validation (2026-08-06, 12-coin universe):** Monday positive in **11/12** coins (only LIT flat at −0.3); Thursday negative in **12/12** (mean −5.7 bps/h, range −2.0 to −10.0 excluding CASHCAT). Individual t-stats mostly marginal (ETH −2.59, XRP −2.28 significant; WLD Monday +2.12) but sign consistency across 12 coins is the evidence: P(12/12 negative | null) ≈ 0.02%. Effect is broad, not coin-specific.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-07",
+        "author": "hl_monitor",
+        "note": "- **Session interaction (2026-08-07, deep-dive c):** Thursday negativity is NOT concentrated in US hours. Equal-weight across 11 coins: Asia 00–07 UTC −7.85 bps (t=−5.64), US 13–20 UTC −7.31 bps (t=−4.99), Europe 08–12 UTC −1.63 bps. 9/11 coins negative in US hours. Monday positivity IS session-dependent: Europe +11.03, US +7.56, Asia +1.07 bps. H1 is a 24-hour calendar effect, not an intraday-session artifact.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-08",
+        "author": "hl_monitor",
+        "note": "- **Vol-regime conditioning (2026-08-08, deep-dive d):** H1 is AMPLIFIED in high-vol regimes. Equal-weight across 11 coins: Mon HIGH vol +6.21 bps (t=3.72) vs Mon LOW vol +2.78 bps (t=1.92); Thu HIGH vol −6.44 bps (t=−3.56) vs Thu LOW vol −4.07 bps (t=−2.95). Same sign in both regimes; high vol sharpens the effect.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "hl_monitor",
+        "note": "- **Persistence (2026-08-09):** 5 consecutive daily records show Monday 10/11 positive, Thursday 11/11 negative. Mean Thu bps stable (−5.48 → −5.49 → −5.42 → −5.42 → −5.42). Basket Sharpe stable (2.61 → 2.62 → 2.59 → 2.58 → 2.58). No decay detected.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "hl_monitor",
+        "note": "- **Timeframe robustness (2026-08-09, deep-dive b):** H1 raw effect is IDENTICAL at 4h and 1d resolutions: 10/11 coins positive Monday, 11/11 negative Thursday at 1h/4h/1d. 4h basket Sharpe **3.43** exceeds 1h (2.58), suggesting the effect is cleaner at coarser granularity. 1d backtest is negative (−6.2%) due to fee/execution erosion — raw effect exists but naive daily-close execution fails to capture it.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "hl_monitor",
+        "note": "- **OOS basket (2026-08-09, Week 1):** frozen from discovery (2026-08-06 19:00 UTC): **−0.90% / 61h**, Sharpe −19.5 — flat/negative first week but <3 days elapsed; next meaningful reading after first full Mon→Thu cycle post-discovery (Aug 11–14).",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Basket backtest (2026-08-06, IN-SAMPLE — discovery window = test window):** equal-weight long-Monday / short-Thursday across 11 long-history coins, net of 4.5bps taker fee: **+54.7% over ~7 months, Sharpe 2.61, max DD −16.3%**, 30% exposure. Promising, but the pattern was *selected* on this same data — treat as hypothesis-confirmation, not evidence of forward edge. True test = metrics_history persistence + live forward performance.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Cautions:** ~29 observations per weekday per coin; effect size small per-hour; in-sample backtest is NOT validation; needs out-of-sample persistence before `supported`.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "archaeologist",
+        "note": "Equities Lab #3 first hunt (D-0006) independently found Thursday-negative (-13.5 bps/day, 18/24 sign consistency) — strengthens H1's Thursday leg as a possible cross-asset effect rather than a crypto-only artifact.",
+        "kind": "observation"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-09T17:27:27+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      },
+      {
+        "ts": "2026-08-09T17:43:04+00:00",
+        "event": "linked:D-0006"
+      }
+    ]
+  },
+  {
+    "id": "D-0002",
+    "title": "[H2] Mid-cap 1h mean-reversion",
+    "lab": "hl_crypto",
+    "status": "CANDIDATE",
+    "created": "2026-08-09T17:27:27+00:00",
+    "freeze_ts": null,
+    "hypothesis": "Mid-cap 1h mean-reversion",
+    "falsifiable_prediction": "negative lag-1 autocorr in HYPE/LIT persists in new\n  data, and a fade-the-last-hour rule beats random net of Hyperliquid fees/slippage.",
+    "kill_criteria": "",
+    "metrics": {
+      "effect_size": null,
+      "effect_unit": "",
+      "n": null,
+      "t_stat": null,
+      "p_value": null,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "refined; decaying evidence",
+    "lineage": [],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Observation (2026-08-06):** HYPE 1h return lag-1 autocorrelation −0.041 vs ≈0 for BTC/ETH. Suggests weak short-term reversion in the least-liquid asset.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Cross-validation (2026-08-06, 12-coin universe):** 8/12 coins negative (mean −0.019), but significant only in HYPE (−0.041), LIT (−0.048) and CASHCAT (−0.133, short sample). **Exception: WLD is significantly POSITIVE (+0.044) — it trends at 1h, opposite direction.** Majors (BTC/ETH/XRP) ≈ 0. Refined: reversion is a *specific mid-caps* phenomenon, not universal; WLD excluded and tracked as its own micro-trend candidate.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "hl_monitor",
+        "note": "- **Timeframe decay (2026-08-09, deep-dive b):** the 1h mean-reversion in HYPE/LIT **disappears entirely at 4h**. HYPE ac1 at 4h is near-zero and not significant; mean ac1 across 11 coins flips to +0.020 (slight momentum). At 1d, only XRP and WLD are significant. The effect is purely intraday microstructure (likely bid-ask bounce / inventory management), not multi-hour mean-reversion.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Cautions:** effect size tiny; perp fees + spread may erase it. Any position held longer than ~1h will not capture the effect. Revisit in **1 week**; if 4h remains null, downgrade toward `rejected` for tradeable purposes.",
+        "kind": "observation"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-09T17:27:27+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      }
+    ]
+  },
+  {
+    "id": "D-0003",
+    "title": "[H3] Intraday vol regime timing",
+    "lab": "hl_crypto",
+    "status": "CANDIDATE",
+    "created": "2026-08-09T17:27:27+00:00",
+    "freeze_ts": null,
+    "hypothesis": "Intraday vol regime timing",
+    "falsifiable_prediction": "",
+    "kill_criteria": "",
+    "metrics": {
+      "effect_size": null,
+      "effect_unit": "",
+      "n": null,
+      "t_stat": null,
+      "p_value": null,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "context, not alpha alone",
+    "lineage": [],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Observation (2026-08-06):** realized 1h vol peaks 13–15 UTC (US session open) and troughs 04–09 UTC for BTC/ETH/SOL; HYPE vol ~1.4–2× SOL at all hours.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-06",
+        "author": "hl_monitor",
+        "note": "- **Use:** any entry/exit timing and stoploss sizing should be hour-aware. Also: signals fired in low-vol hours deserve separate validation.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-08",
+        "author": "hl_monitor",
+        "note": "- **Update (2026-08-08):** vol regime now shown to condition both H1 (stronger in high vol) and H4 (fade only in high vol). Vol is a context layer, not alpha alone, but essential for signal calibration.",
+        "kind": "observation"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-09T17:27:27+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      }
+    ]
+  },
+  {
+    "id": "D-0004",
+    "title": "[EQ-T1] Tuesday effect",
+    "lab": "equities",
+    "status": "SUPPORTED",
+    "created": "2026-08-09T17:42:36+00:00",
+    "freeze_ts": "2026-08-09T17:42:36+00:00",
+    "hypothesis": "21/24 positive, mean +9.0 bps/day",
+    "falsifiable_prediction": "Effect reappears with same sign in the NEXT 6 months of daily data for the same 24-stock universe (registered 2026-08-09).",
+    "kill_criteria": "Sign flip or |effect| < half the discovery-window estimate in the frozen forward window, or failure to replicate in a second universe.",
+    "metrics": {
+      "effect_size": null,
+      "effect_unit": "bps/day",
+      "n": null,
+      "t_stat": null,
+      "p_value": 0.0001385807991027832,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pass",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "",
+    "lineage": [],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-09",
+        "author": "explorer:equities",
+        "note": "T1 Tuesday effect: 21/24 positive, mean +9.0 bps/day (p=0.000138581, sign consistency k=21/24)",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "second-universe replication (13 sector ETFs + IWM/MDY, same 2y window): 13/13 same-sign, mean +6.2 bps/day vs discovery +9.0; t=7.3645, p=0.0. Verdict: REPLICATES. Caveat: shares discovery window's macro calendar; frozen forward window remains decisive.",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "second-universe replication: 13/13 same-sign",
+        "kind": "falsification"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-09T17:42:36+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "status:CANDIDATE->TESTING",
+        "note": "replication stage entered"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "gate:statistician=pass",
+        "note": "second-universe replication: 13/13 same-sign"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "status:TESTING->SUPPORTED",
+        "note": "survived cross-universe replication"
+      }
+    ]
+  },
+  {
+    "id": "D-0005",
+    "title": "[EQ-T1] Wednesday effect",
+    "lab": "equities",
+    "status": "SUPPORTED",
+    "created": "2026-08-09T17:42:36+00:00",
+    "freeze_ts": "2026-08-09T17:42:36+00:00",
+    "hypothesis": "18/24 positive, mean +26.2 bps/day",
+    "falsifiable_prediction": "Effect reappears with same sign in the NEXT 6 months of daily data for the same 24-stock universe (registered 2026-08-09).",
+    "kill_criteria": "Sign flip or |effect| < half the discovery-window estimate in the frozen forward window, or failure to replicate in a second universe.",
+    "metrics": {
+      "effect_size": null,
+      "effect_unit": "bps/day",
+      "n": null,
+      "t_stat": null,
+      "p_value": 0.011327922344207764,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pass",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "",
+    "lineage": [],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-09",
+        "author": "explorer:equities",
+        "note": "T1 Wednesday effect: 18/24 positive, mean +26.2 bps/day (p=0.0113279, sign consistency k=18/24)",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "second-universe replication (13 sector ETFs + IWM/MDY, same 2y window): 10/13 same-sign, mean +10.9 bps/day vs discovery +26.2; t=2.7783, p=0.005464. Verdict: REPLICATES. Caveat: shares discovery window's macro calendar; frozen forward window remains decisive.",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "second-universe replication: 10/13 same-sign",
+        "kind": "falsification"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-09T17:42:36+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "status:CANDIDATE->TESTING",
+        "note": "replication stage entered"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "gate:statistician=pass",
+        "note": "second-universe replication: 10/13 same-sign"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "status:TESTING->SUPPORTED",
+        "note": "survived cross-universe replication"
+      }
+    ]
+  },
+  {
+    "id": "D-0006",
+    "title": "[EQ-T1] Thursday effect",
+    "lab": "equities",
+    "status": "TESTING",
+    "created": "2026-08-09T17:42:36+00:00",
+    "freeze_ts": "2026-08-09T17:42:36+00:00",
+    "hypothesis": "6/24 positive, mean -13.5 bps/day",
+    "falsifiable_prediction": "Effect reappears with same sign in the NEXT 6 months of daily data for the same 24-stock universe (registered 2026-08-09).",
+    "kill_criteria": "Sign flip or |effect| < half the discovery-window estimate in the frozen forward window, or failure to replicate in a second universe.",
+    "metrics": {
+      "effect_size": null,
+      "effect_unit": "bps/day",
+      "n": null,
+      "t_stat": null,
+      "p_value": 0.011327922344207764,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "watch",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "",
+    "lineage": [
+      "D-0001"
+    ],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-09",
+        "author": "explorer:equities",
+        "note": "T1 Thursday effect: 6/24 positive, mean -13.5 bps/day (p=0.0113279, sign consistency k=18/24)",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "archaeologist",
+        "note": "Thursday negativity found independently in hl_crypto (D-0001: 12/12 coins, mean -5.7 bps/h, persistence confirmed over 5 daily records) and now in US equities (6/24 positive, -13.5 bps/day). Cross-asset calendar effect candidate; check whether both are expressions of the same weekly liquidity/positioning cycle.",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "second-universe replication (13 sector ETFs + IWM/MDY, same 2y window): 9/13 same-sign, mean -3.3 bps/day vs discovery -13.5; t=1.2164, p=0.223817. Verdict: REPLICATES. Caveat: shares discovery window's macro calendar; frozen forward window remains decisive.",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "second-universe replication: 9/13 same-sign",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "override: mechanical REPLICATES verdict downgraded — replication mean -3.3 bps vs discovery -13.5 bps (75% decay), t=1.22 p=0.22 not significant. Treat as unresolved; frozen forward window decides.",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "sceptic",
+        "note": "Thursday effect may be discovery-universe overfitting: crypto H1's Thursday leg was -5.7 bps/h with 12/12 consistency; equities replication is 9/13 at quarter strength. Alternative explanation: shared macro calendar in the same 2y window (FOMC/CPI Thursdays) rather than a persistent weekly cycle.",
+        "kind": "falsification"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-09T17:42:36+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      },
+      {
+        "ts": "2026-08-09T17:43:04+00:00",
+        "event": "linked:D-0001"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "status:CANDIDATE->TESTING",
+        "note": "replication stage entered"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "gate:statistician=pass",
+        "note": "second-universe replication: 9/13 same-sign"
+      },
+      {
+        "ts": "2026-08-09T17:50:18+00:00",
+        "event": "status:TESTING->SUPPORTED",
+        "note": "survived cross-universe replication"
+      },
+      {
+        "ts": "2026-08-09T17:50:52+00:00",
+        "event": "gate:statistician=watch",
+        "note": "override: mechanical REPLICATES verdict downgraded — replication mean -3.3 bps vs discovery -13.5 bps (75% decay), t=1.22 p=0.22 not significant. Treat as unresolved; frozen forward window decides."
+      },
+      {
+        "ts": "2026-08-09T17:50:52+00:00",
+        "event": "status:SUPPORTED->TESTING",
+        "note": "sent back from SUPPORTED: weak replication"
+      }
+    ]
+  },
+  {
+    "id": "D-0007",
+    "title": "[BF-C] fadebot stop placed inside pump continuation range",
+    "lab": "betfair",
+    "status": "CANDIDATE",
+    "created": "2026-08-09T20:01:49+00:00",
+    "freeze_ts": "2026-08-09T20:01:49+00:00",
+    "hypothesis": "Stopped trades (n=20, 0 wins, -5.51 total) had stop distances of 0.25-0.50 price units against pump sizes of 0.65-1.8: the stop sits inside the pump's normal continuation range and converts correct directional reads into realised losses.",
+    "falsifiable_prediction": "Over the next 4 weeks of fadebot trades, stopped-out trades with stop_distance < pump_size continue to realise ~100% losses, while trades that survive to window exit retain the 80% directional edge. Widening stops beyond 1.2x pump_size (or removing them with a size cap) improves mean net P&L per trade in the forward cohort.",
+    "kill_criteria": "Forward stopped trades become profitable or break-even with current placement (stop was right), or window-exit P&L turns more negative than stopped-trade P&L (stop was protecting).",
+    "metrics": {
+      "effect_size": -0.275,
+      "effect_unit": "£/trade (stopped cohort)",
+      "n": 20,
+      "t_stat": null,
+      "p_value": null,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "",
+    "lineage": [],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-09",
+        "author": "detective:betfair",
+        "note": "premise holds: 60/75 price down after LAY entry (80%), yet P&L negative in every exit class except 3 target hits",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "detective:betfair",
+        "note": "STOP_PUMP_RESUMED: 20 trades, 0 wins, -5.51 of -8.84 total; stop distance 0.25-0.5 vs pump_size 0.65-1.8",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "detective:betfair",
+        "note": "ruled out: hedge cost ~0, sim-vs-live identical (-0.119 vs -0.113/trade); 3 unhedged live positions (liquidity gate failure at exit)",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "detective:betfair",
+        "note": "payoff asymmetry 0.62 (avg win +0.092 vs avg loss -0.150) inverts the 80% directional edge",
+        "kind": "observation"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "Experiment matrix: widening stop_ticks 2->3->5->100(no stop) leaves P&L at -1.16..-1.26 on replay; stop exits vanish but losses persist. Stop-inside-pump is real (D-0007 stands as diagnosis) but fixing it does NOT fix expectancy — the pump-fade shape itself has negative payoff asymmetry.",
+        "kind": "falsification"
+      },
+      {
+        "date": "2026-08-09",
+        "author": "statistician",
+        "note": "Structural flip (BACK continuation) also falsified: 9/9 variants negative, no significant direction dominance (4/6 pairs, p=0.34), best cell failed OOS (-0.32). The stop-inside-pump diagnosis stands, but neither direction of the pump-completion trade has positive expectancy. Pump-fade family closed at this stake/structure level.",
+        "kind": "falsification"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-09T20:01:49+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      }
+    ]
+  }
+]

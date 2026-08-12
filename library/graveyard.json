@@ -1,0 +1,154 @@
+[
+  {
+    "id": "D-0008",
+    "title": "Fadebot parameter-tuning rescue (stops/exits/entries/liquidity)",
+    "lab": "betfair",
+    "status": "KILLED",
+    "created": "2026-08-09T20:19:16+00:00",
+    "freeze_ts": null,
+    "hypothesis": "Retuning stop distance, exit targets/holds, entry pump thresholds or liquidity gates turns fadebot's negative expectancy positive.",
+    "falsifiable_prediction": "At least one of 16 parameter variants produces positive closed-trade P&L on the 3-day replay extract with BH-FDR survival vs baseline.",
+    "kill_criteria": "No variant positive, or no FDR survivor vs baseline.",
+    "metrics": {
+      "effect_size": -0.126,
+      "effect_unit": "GBP/trade (baseline replay)",
+      "n": 10,
+      "t_stat": -1.9,
+      "p_value": 0.057,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "Falsified on replay (2026-07-03/04/11, literal live code): all 16 variants negative; best per-trade -0.095 vs baseline -0.126; BH-FDR survivors 0/15. Stop widening 2->no-stop moves P&L only -1.26 -> -1.16. Problem is structural, not parametric.",
+    "regime_notes": "GB/IE horse racing, T-90m..T-15m window, 5s replay cadence. Replay baseline matches live forensic (-0.126 vs -0.119/trade).",
+    "lineage": [
+      "D-0007"
+    ],
+    "strategy_ref": "",
+    "evidence": [],
+    "history": [
+      {
+        "ts": "2026-08-09T20:19:16+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      },
+      {
+        "ts": "2026-08-09T20:19:16+00:00",
+        "event": "linked:D-0007"
+      },
+      {
+        "ts": "2026-08-09T20:19:16+00:00",
+        "event": "status:CANDIDATE->KILLED",
+        "note": "16-variant experiment matrix, report labs/betfair/reports/experiment-matrix-2026-08-09.md"
+      }
+    ]
+  },
+  {
+    "id": "D-0009",
+    "title": "Fadebot structural flip: BACK the pump continuation",
+    "lab": "betfair",
+    "status": "KILLED",
+    "created": "2026-08-09T20:35:02+00:00",
+    "freeze_ts": null,
+    "hypothesis": "The pump-completion signal has positive expectancy when traded as a BACK (riding continuation) instead of a LAY (fading).",
+    "falsifiable_prediction": "At least one of 9 flip variants produces positive closed-trade P&L on the in-sample replay window, with direction dominance over fade and OOS persistence on held-out days.",
+    "kill_criteria": "No positive flip variant, no significant direction dominance, or best cell fails OOS.",
+    "metrics": {
+      "effect_size": -0.041,
+      "effect_unit": "GBP/trade (best flip cell, in-sample)",
+      "n": 4,
+      "t_stat": -0.456,
+      "p_value": 0.648,
+      "oos_effect": -0.323,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "All 9 flip variants negative in-sample (best F06_pump18 -0.041/trade). Direction dominance not significant (flip better 4/6 pairs, sign p=0.34, BH-FDR 0/6). Best cell failed OOS on held-out 2026-07-12/13/14 (-0.32, n=1). Flow-confirmation gate rejected all signals. Pump-completion trading is negative in BOTH directions across 25 variants and 6 replay days.",
+    "regime_notes": "GB/IE racing T-90m..T-15m; replay 5s cadence; targets almost never hit in either direction (1 target exit across flip matrix).",
+    "lineage": [
+      "D-0007",
+      "D-0008"
+    ],
+    "strategy_ref": "",
+    "evidence": [],
+    "history": [
+      {
+        "ts": "2026-08-09T20:35:02+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      },
+      {
+        "ts": "2026-08-09T20:35:02+00:00",
+        "event": "linked:D-0007"
+      },
+      {
+        "ts": "2026-08-09T20:35:02+00:00",
+        "event": "linked:D-0008"
+      },
+      {
+        "ts": "2026-08-09T20:35:02+00:00",
+        "event": "status:CANDIDATE->KILLED",
+        "note": "report labs/betfair/reports/flip-experiment-2026-08-09.md"
+      }
+    ]
+  },
+  {
+    "id": "D-0010",
+    "title": "Pre-off drift/steam/surge/imbalance signals (scout sweep 1)",
+    "lab": "betfair",
+    "status": "KILLED",
+    "created": "2026-08-09T20:46:21+00:00",
+    "freeze_ts": null,
+    "hypothesis": "Simple pre-off price/volume signals (drift, late steam, volume surge, book imbalance) predict mid-price direction in the T-30m..T-15m forward window.",
+    "falsifiable_prediction": "At least one signal cell shows mean signed forward return significantly > 0 after BH-FDR (m=6) on the discovery window AND keeps a positive sign out-of-sample.",
+    "kill_criteria": "No BH-FDR survivor, or sign instability between windows.",
+    "metrics": {
+      "effect_size": 2.9,
+      "effect_unit": "% fwd (imbal_backheavy, best cell)",
+      "n": 88,
+      "t_stat": 0.94,
+      "p_value": 0.3457,
+      "oos_effect": 2.86,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "No BH-FDR survivor in either window (discovery m=6: none; OOS m=6: none). Signs flip between windows: drift>=5% -1.43% (discovery) vs +6.02% (OOS); steam>=6% +0.75% vs -0.54%. imbal_backheavy +2.9% both windows but p>=0.21. No persistent directional edge in these naive families.",
+    "regime_notes": "GB/IE racing, T-90m..T-15m window (replay collector cutoff). 1541 + 946 runner series across 6 days. Scout collector now gathering to-the-off data for sharper versions.",
+    "lineage": [],
+    "strategy_ref": "",
+    "evidence": [],
+    "history": [
+      {
+        "ts": "2026-08-09T20:46:21+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      },
+      {
+        "ts": "2026-08-09T20:46:21+00:00",
+        "event": "status:CANDIDATE->KILLED",
+        "note": "labs/betfair/scout/explorer.py sweep; explorer_results.json"
+      }
+    ]
+  }
+]

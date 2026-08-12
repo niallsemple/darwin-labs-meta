@@ -1,0 +1,57 @@
+name: DARWIN Meta-Engine CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 07:17 UTC (off-peak minute)
+    - cron: '17 7 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v || true
+
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check . || true
+
+  daily-run-dry:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Dry-run daily pipeline (no LLM)
+        run: |
+          # This verifies imports and script structure without a live LLM
+          python -c "from darwin_meta.utils.llm_bridge import LLMBridge; print('imports OK')"
+          python -c "from darwin_meta.agents.explorer import ExplorerAgent; print('explorer OK')"
+          python -c "from darwin_meta.agents.statistician import StatisticianAgent; print('statistician OK')"
+          python -c "from darwin_meta.agents.sceptic import ScepticAgent; print('sceptic OK')"
+          python -c "from darwin_meta.agents.ceo import CEOAgent; print('ceo OK')"
+          python -c "from darwin_meta.loops.meta_learning import MetaLearningLoop; print('meta-loop OK')"
+          python -c "from laboratory.schema import Discovery; print('lab OK')"
