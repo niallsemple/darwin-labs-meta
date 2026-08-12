@@ -1,11 +1,14 @@
 """DARWIN Meta-Engine — Daily AI Run
 
-Orchestrates the full AI pipeline:\n
-1. Check local LLM health\n
-2. Run AI board meeting (agents analyse library)\n
-3. Update meta-learning loop\n
-4. Write meta-report\n
-5. Git commit\n
+Orchestrates the full AI pipeline:
+1. Check local LLM health
+2. Run decay detection (deterministic)
+3. Run AI board meeting (agents analyse library)
+4. Generate HTML dashboard
+5. Update meta-learning loop
+6. Write meta-report
+7. Git commit + push
+
 Usage: python3 scripts/ai_daily_run.py
 """
 
@@ -23,10 +26,12 @@ sys.path.insert(0, str(ROOT))
 from darwin_meta.utils.llm_bridge import LLMBridge
 from darwin_meta.ai_board_meeting import generate_ai_boardMeeting
 from darwin_meta.loops.meta_learning import MetaLearningLoop
+from darwin_meta.loops.decay_detection import scan_library, render_decay_report
+from darwin_meta.utils.dashboard import generate_dashboard
 
 
-def sh(cmd: list[str]) -> tuple[int, str]:
-    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1200)
+def sh(cmd: list[str], timeout: int = 120) -> tuple[int, str]:
+    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
     return p.returncode, (p.stdout + p.stderr)
 
 
@@ -35,14 +40,29 @@ def main() -> None:
 
     # 1. Health check
     llm = LLMBridge()
-    if not llm.health():
-        print("FATAL: Local LLM server not responding at", llm.base_url)
-        print("Start it with: ./start-server.sh")
-        sys.exit(1)
-    summary["steps"]["llm_health"] = {"status": "ok"}
-    print("LLM health: OK")
+    healthy = llm.health()
+    summary["steps"]["llm_health"] = {"status": "ok" if healthy else "degraded"}
+    print("LLM health:", "OK" if healthy else "DEGRADED (will try anyway)")
+    if not healthy:
+        print("WARNING: LLM not responding. Board meeting may fail.")
 
-    # 2. AI Board Meeting
+    # 2. Decay detection (deterministic, no LLM needed)
+    try:
+        decay_reports = scan_library(ROOT / "library" / "edges.json")
+        decay_path = ROOT / "reports" / f"decay-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.md"
+        decay_path.write_text(render_decay_report(decay_reports))
+        summary["steps"]["decay_detection"] = {
+            "status": "ok",
+            "reports": len(decay_reports),
+            "report_path": str(decay_path),
+        }
+        print(f"Decay detection: {len(decay_reports)} signals → {decay_path}")
+    except Exception as e:
+        summary["steps"]["decay_detection"] = {"status": "error", "error": str(e)}
+        print(f"Decay detection failed: {e}")
+        decay_reports = []
+
+    # 3. AI Board Meeting
     try:
         report_path = ROOT / "reports" / f"board-ai-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.md"
         text = generate_ai_boardMeeting(
@@ -50,14 +70,31 @@ def main() -> None:
             ROOT / "library" / "graveyard.json",
             report_path,
             llm=llm,
+            meta_log_path=ROOT / "darwin_meta" / "loops" / "agent_performance.jsonl",
         )
         summary["steps"]["ai_board_meeting"] = {"status": "ok", "report": str(report_path)}
         print(f"AI Board Meeting: {report_path}")
     except Exception as e:
         summary["steps"]["ai_board_meeting"] = {"status": "error", "error": str(e)}
         print(f"AI Board Meeting failed: {e}")
+        decay_reports = []  # fallback for dashboard
 
-    # 3. Meta-learning report
+    # 4. Dashboard generation
+    try:
+        dash_path = generate_dashboard(
+            ROOT / "library" / "edges.json",
+            ROOT / "library" / "graveyard.json",
+            ROOT / "darwin_meta" / "loops" / "agent_performance.jsonl",
+            decay_reports,
+            ROOT / "reports" / "dashboard.html",
+        )
+        summary["steps"]["dashboard"] = {"status": "ok", "path": dash_path}
+        print(f"Dashboard: {dash_path}")
+    except Exception as e:
+        summary["steps"]["dashboard"] = {"status": "error", "error": str(e)}
+        print(f"Dashboard failed: {e}")
+
+    # 5. Meta-learning report
     try:
         loop = MetaLearningLoop()
         meta_report = loop.render_report_md()
@@ -69,7 +106,7 @@ def main() -> None:
         summary["steps"]["meta_report"] = {"status": "error", "error": str(e)}
         print(f"Meta report failed: {e}")
 
-    # 4. Git commit
+    # 6. Git commit + push
     rc, out = sh(["git", "add", "-A"])
     rc2, out2 = sh(["git", "-c", "user.name=darwin-meta",
                     "-c", "user.email=darwin@local",
@@ -79,7 +116,16 @@ def main() -> None:
     summary["steps"]["git"] = {"committed": committed}
     print("Git:", "committed" if committed else "nothing to commit")
 
-    # 5. Summary
+    # Push to origin (best effort)
+    rc3, out3 = sh(["git", "push"])
+    pushed = rc3 == 0
+    summary["steps"]["git"]["pushed"] = pushed
+    if pushed:
+        print("Git: pushed to origin")
+    else:
+        print("Git: push skipped or failed:", out3[:200])
+
+    # 7. Summary
     print(f"\nDARWIN_AI_SUMMARY={json.dumps(summary)}")
 
 

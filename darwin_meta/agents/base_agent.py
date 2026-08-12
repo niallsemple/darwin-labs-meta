@@ -5,6 +5,7 @@ Every research-company role inherits from this.  Provides:
 - structured vs free-form output modes
 - performance logging (for the meta-loop)
 - cost/time tracking
+- Meta-learning integration: queries MetaLearningLoop for optimal prompts
 """
 
 from __future__ import annotations
@@ -54,13 +55,26 @@ class BaseAgent:
         self._meta_log_path = META_LOG_PATH
         self._meta_log_path.parent.mkdir(parents=True, exist_ok=True)
 
+    def _get_system_prompt(self) -> str:
+        """Get system prompt — class default or meta-learning optimised variant."""
+        try:
+            from darwin_meta.loops.meta_learning import MetaLearningLoop
+            loop = MetaLearningLoop()
+            meta_prompt = loop.get_prompt(self.ROLE_NAME)
+            if meta_prompt:
+                return meta_prompt
+        except Exception:
+            pass
+        return self.SYSTEM_PROMPT
+
     def _call(self, user_prompt: str, temperature: float = 0.3,
               max_tokens: int = 2048, structured: bool = False,
               schema: Optional[dict] = None) -> str | dict:
         """Internal LLM call with performance logging."""
         t0 = time.perf_counter()
+        system_prompt = self._get_system_prompt()
         messages = [
-            {"role": "system", "content": self.SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
         try:

@@ -2,11 +2,13 @@
 
 Replaces the static markdown generator with one that actually uses
 agents to analyse the library and produce a strategic daily report.
+Now includes Archaeologist (institutional memory) and Decay Detection.
 """
 
 from __future__ import annotations
 
 import json
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +16,8 @@ from pathlib import Path
 from darwin_meta.agents.ceo import CEOAgent
 from darwin_meta.agents.statistician import StatisticianAgent
 from darwin_meta.agents.sceptic import ScepticAgent
+from darwin_meta.agents.archaeologist import ArchaeologistAgent
+from darwin_meta.loops.decay_detection import scan_library, render_decay_report
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -34,13 +38,23 @@ def _summarise_discovery(d: dict) -> str:
 
 
 def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
-                             out_path: Path, llm=None) -> str:
-    """Run the full AI pipeline to produce a board meeting report."""
+                             out_path: Path, llm=None,
+                             meta_log_path: Path | None = None,
+                             returns_source: dict | None = None) -> str:
+    """Run the full AI pipeline to produce a board meeting report.
+
+    Args:
+        library_path: Path to edges.json
+        graveyard_path: Path to graveyard.json
+        out_path: Where to write the markdown report
+        llm: LLMBridge instance
+        meta_log_path: Optional path to agent_performance.jsonl for Archaeologist
+        returns_source: Optional mapping of discovery_id -> recent daily returns for decay detection
+    """
     lib = json.loads(library_path.read_text()) if library_path.exists() else []
     grave = json.loads(graveyard_path.read_text()) if graveyard_path.exists() else []
 
     today = datetime.now(timezone.utc).strftime("%d %B %Y").upper()
-    today_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     counts = Counter(d["status"] for d in lib)
 
@@ -55,47 +69,92 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         if counts.get(s):
             lib_summary_lines.append(f"  {s}: {counts[s]}")
 
+    # --- DECAY DETECTION (deterministic, no LLM) ---
+    print("  [Decay] Scanning for decay signals...", flush=True)
+    decay_reports = scan_library(library_path, returns_source)
+    decay_md = render_decay_report(decay_reports)
+    print(f"    → {len(decay_reports)} discoveries showing decay", flush=True)
+
+    # --- ARCHAEOLOGIST (institutional memory) ---
+    print("  [Archaeologist] Mining lab history...", flush=True)
+    archaeologist_notes = []
+    try:
+        arch_agent = ArchaeologistAgent(llm)
+        arch_report = arch_agent.run(lib, grave)
+        if arch_report.get("recurring_failures"):
+            archaeologist_notes.append("**Recurring failure patterns:**")
+            for rf in arch_report["recurring_failures"][:3]:
+                archaeologist_notes.append(f"- {rf['pattern']} ({rf['count']} times)")
+        if arch_report.get("institutional_notes"):
+            archaeologist_notes.append("**Institutional notes:**")
+            for note in arch_report["institutional_notes"][:3]:
+                archaeologist_notes.append(f"- {note}")
+        if arch_report.get("zombie_hypotheses"):
+            archaeologist_notes.append("**Zombie hypotheses:**")
+            for zh in arch_report["zombie_hypotheses"][:2]:
+                archaeologist_notes.append(f"- '{zh['title_pattern']}' seen {zh['occurrences']} times")
+        print("    → Archaeologist analysis complete", flush=True)
+        time.sleep(2)
+    except Exception as e:
+        archaeologist_notes.append(f"Archaeologist error: {e}")
+        print(f"    → ERROR: {e}", flush=True)
+
     # Run Statistician on each SUPPORTED+ discovery
     stat_reports = []
     stat_agent = StatisticianAgent(llm)
-    for d in lib:
-        if d["status"] in ("SUPPORTED", "VALIDATED", "SHADOW"):
-            ctx = _summarise_discovery(d)
-            try:
-                report = stat_agent.run(ctx, "See evidence in library record.")
-                stat_reports.append(f"{d['id']}: {report['verdict']} — {report['recommendation'][:100]}")
-            except Exception as e:
-                stat_reports.append(f"{d['id']}: stat error — {e}")
+    targets = [d for d in lib if d["status"] in ("SUPPORTED", "VALIDATED", "SHADOW")]
+    for i, d in enumerate(targets, 1):
+        ctx = _summarise_discovery(d)
+        print(f"  [Statistician] {d['id']} ({i}/{len(targets)})...", flush=True)
+        try:
+            report = stat_agent.run(ctx, "See evidence in library record.")
+            stat_reports.append(f"{d['id']}: {report['verdict']} — {report['recommendation'][:100]}")
+            print(f"    → {report['verdict']}", flush=True)
+            time.sleep(2)
+        except Exception as e:
+            stat_reports.append(f"{d['id']}: stat error — {e}")
+            print(f"    → ERROR: {e}", flush=True)
 
     # Run Sceptic on each SUPPORTED+ discovery
     scept_reports = []
     scept_agent = ScepticAgent(llm)
-    for d in lib:
-        if d["status"] in ("SUPPORTED", "VALIDATED", "SHADOW"):
-            ctx = _summarise_discovery(d)
-            evidence = "\n".join(e["note"][:200] for e in d.get("evidence", [])[-3:])
-            try:
-                report = scept_agent.run(ctx, evidence)
-                scept_reports.append(
-                    f"{d['id']}: {report['verdict']} (kill_prob={report['kill_probability']:.2f}) — "
-                    f"top attack: {report['attacks'][0]['attack'][:80] if report['attacks'] else 'none'}"
-                )
-            except Exception as e:
-                scept_reports.append(f"{d['id']}: sceptic error — {e}")
+    for i, d in enumerate(targets, 1):
+        ctx = _summarise_discovery(d)
+        evidence = "\n".join(e["note"][:200] for e in d.get("evidence", [])[-3:])
+        print(f"  [Sceptic] {d['id']} ({i}/{len(targets)})...", flush=True)
+        try:
+            report = scept_agent.run(ctx, evidence)
+            scept_reports.append(
+                f"{d['id']}: {report['verdict']} (kill_prob={report['kill_probability']:.2f}) — "
+                f"top attack: {report['attacks'][0]['attack'][:80] if report['attacks'] else 'none'}"
+            )
+            print(f"    → {report['verdict']} (kill_prob={report['kill_probability']:.2f})", flush=True)
+            time.sleep(2)
+        except Exception as e:
+            scept_reports.append(f"{d['id']}: sceptic error — {e}")
+            print(f"    → ERROR: {e}", flush=True)
 
     # Run CEO synthesis
+    print("  [CEO] Synthesising board meeting...", flush=True)
     ceo_agent = CEOAgent(llm)
+    # Include Archaeologist insights in CEO briefing
+    arch_section = "\n".join(archaeologist_notes) if archaeologist_notes else "No institutional notes."
     agent_reports = (
         "STATISTICIAN REPORTS:\n" + "\n".join(stat_reports) + "\n\n"
-        "SCEPTIC REPORTS:\n" + "\n".join(scept_reports)
+        "SCEPTIC REPORTS:\n" + "\n".join(scept_reports) + "\n\n"
+        "DECAY REPORT:\n" + (f"{len(decay_reports)} discoveries showing decay signals. "
+                              "Escalate if score > 0.7." if decay_reports else "No decay detected.") + "\n\n"
+        "ARCHAEOLOGIST NOTES:\n" + arch_section
     )
     try:
         ceo_decision = ceo_agent.run("\n".join(lib_summary_lines), agent_reports)
+        print("    → CEO synthesis complete", flush=True)
     except Exception as e:
         ceo_decision = {
             "agenda": [], "build_queue": [], "kill_queue": [],
             "investigate_queue": [], "ceo_commentary": f"CEO synthesis failed: {e}",
         }
+        print(f"    → CEO ERROR: {e}", flush=True)
 
     # Render markdown
     L = []
@@ -137,6 +196,24 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
             L.append(f"- `{did}`")
         L.append("")
 
+    if ceo_decision.get("investigate_queue"):
+        L.append("## INVESTIGATE QUEUE")
+        L.append("")
+        for did in ceo_decision["investigate_queue"]:
+            L.append(f"- `{did}`")
+        L.append("")
+
+    # Decay section
+    if decay_reports:
+        L.append("## DECAY ALERTS")
+        L.append("")
+        for r in sorted(decay_reports, key=lambda x: x.decay_score, reverse=True)[:5]:
+            emoji = {"healthy": "🟢", "watch": "🟡", "investigate": "🟠", "escalate": "🔴"}.get(r.recommendation, "⚪")
+            L.append(f"- {emoji} **{r.discovery_id}** — decay score {r.decay_score:.2f} ({r.recommendation})")
+            for sig in r.signals:
+                L.append(f"  - {sig}")
+        L.append("")
+
     if stat_reports:
         L.append("## STATISTICIAN NOTES")
         L.append("")
@@ -148,6 +225,13 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         L.append("## SCEPTIC ATTACKS")
         L.append("")
         for note in scept_reports:
+            L.append(f"- {note}")
+        L.append("")
+
+    if archaeologist_notes:
+        L.append("## ARCHAEOLOGIST NOTES")
+        L.append("")
+        for note in archaeologist_notes:
             L.append(f"- {note}")
         L.append("")
 
