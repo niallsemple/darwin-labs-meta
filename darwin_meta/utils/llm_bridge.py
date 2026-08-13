@@ -20,8 +20,6 @@ from typing import Optional
 DEFAULT_BASE_URL = "http://127.0.0.1:8080/v1"
 DEFAULT_MODEL = "kimi-linear-48b"
 
-# Global lock: llama-server in CPU mode processes ONE request at a time.
-# All LLMBridge instances share this lock so agents never collide.
 _REQUEST_LOCK = threading.Lock()
 
 
@@ -34,8 +32,6 @@ class LLMResponse:
 
 
 class LLMBridge:
-    """Talk to the local llama-server (or any OpenAI-compatible endpoint)."""
-
     def __init__(self, base_url: str = DEFAULT_BASE_URL, model: str = DEFAULT_MODEL,
                  timeout: int = 180, max_retries: int = 5):
         self.base_url = base_url.rstrip("/")
@@ -64,7 +60,6 @@ class LLMBridge:
         for attempt in range(self.max_retries):
             t0 = time.perf_counter()
             try:
-                # Serialize all requests for CPU inference
                 with _REQUEST_LOCK:
                     with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                         result = json.loads(resp.read().decode("utf-8"))
@@ -79,9 +74,8 @@ class LLMBridge:
                 )
             except urllib.error.HTTPError as e:
                 last_err = e
-                # 503 = server busy (CPU model still processing previous request)
                 if e.code == 503:
-                    backoff = min(5 * (2 ** attempt), 60)  # 5, 10, 20, 40, 60s
+                    backoff = min(5 * (2 ** attempt), 60)
                 else:
                     backoff = min(2 ** attempt, 30)
                 if attempt < self.max_retries - 1:
@@ -98,34 +92,57 @@ class LLMBridge:
         system_msg = (
             "You are a structured-output assistant. "
             "Respond ONLY with valid JSON matching the requested schema. "
-            "No markdown, no commentary, no ```json fences."
+            "No markdown, no commentary, no ```json fences. "
+            "Ensure the JSON is complete and properly terminated."
         )
         msgs = [{"role": "system", "content": system_msg}] + messages
         resp = self.chat(msgs, temperature=temperature, max_tokens=max_tokens)
         text = resp.content.strip()
         # Strip fences if the model ignored instructions
         if text.startswith("```"):
-            text = "\n".join(text.split("\n")[1:])
-            if text.endswith("```"):
-                text = text[:-3].strip()
-            elif text.startswith("json"):
-                text = text[4:].strip()
-        return json.loads(text)
+            lines = text.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+        
+        # Try standard parsing first
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        
+        # Fallback: try to find a complete JSON object
+        best = {}
+        best_len = 0
+        for start in range(len(text)):
+            if text[start] not in '{[':
+                continue
+            for end in range(len(text), start, -1):
+                substr = text[start:end]
+                try:
+                    parsed = json.loads(substr)
+                    if len(substr) > best_len:
+                        best = parsed
+                        best_len = len(substr)
+                    break
+                except json.JSONDecodeError:
+                    continue
+        
+        if best_len > 0:
+            return best
+        
+        raise json.JSONDecodeError(f"Could not parse JSON (len={len(text)}): {text[:200]}...", text, 0)
 
     def health(self) -> bool:
-        """Check if the server is responding. Try /v1/models first."""
         try:
-            with urllib.request.urlopen(
-                f"{self.base_url}/models", timeout=5
-            ) as resp:
+            with urllib.request.urlopen(f"{self.base_url}/models", timeout=5) as resp:
                 return resp.status == 200
         except Exception:
             pass
-        # Fallback: try the legacy health endpoint
         try:
-            with urllib.request.urlopen(
-                f"{self.base_url.replace('/v1','')}/health", timeout=5
-            ) as resp:
+            with urllib.request.urlopen(f"{self.base_url.replace('/v1','')}/health", timeout=5) as resp:
                 return resp.status == 200
         except Exception:
             return False

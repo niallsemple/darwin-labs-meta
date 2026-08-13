@@ -20,18 +20,17 @@ from darwin_meta.utils.llm_bridge import LLMBridge
 @dataclass
 class GapReport:
     repo_name: str
-    useful: bool                      # LLM says yes/no
-    confidence: float                 # 0.0–1.0
-    gaps: list[str]                   # what DARWIN is missing
-    implementation_plan: str          # high-level plan
-    risk_assessment: str              # could this break anything?
-    priority: str                     # high / medium / low
+    useful: bool
+    confidence: float
+    gaps: list[str]
+    implementation_plan: str
+    risk_assessment: str
+    priority: str
 
 
-# Snapshot of DARWIN's current capabilities (kept small for CPU context)
 DARWIN_CAPABILITIES = """
 DARWIN Labs Current Capabilities (v2026-08-12):
-1. Discovery lifecycle: CANDIDATE→TESTING→SUPPORTED→VALIDATED→SHADOW→MICRO_LIVE→PROMOTED/KILLED
+1. Discovery lifecycle: CANDIDATE->TESTING->SUPPORTED->VALIDATED->SHADOW->MICRO_LIVE->PROMOTED/KILLED
 2. Gate system: statistician, sceptic, execution, risk must independently pass
 3. Agents: Explorer, Statistician, Sceptic, CEO, Archaeologist (new)
 4. Meta-learning: tracks agent performance, rotates prompts when underperforming
@@ -45,10 +44,8 @@ DARWIN Labs Current Capabilities (v2026-08-12):
 
 
 def analyse_gap(repo_fp, llm: Optional[LLMBridge] = None) -> GapReport:
-    """Ask the local LLM whether a repo has useful gaps for DARWIN."""
     llm = llm or LLMBridge()
 
-    # Build compact repo description
     flags = []
     if repo_fp.has_backtester: flags.append("backtester")
     if repo_fp.has_risk_mgmt: flags.append("risk_mgmt")
@@ -61,7 +58,6 @@ def analyse_gap(repo_fp, llm: Optional[LLMBridge] = None) -> GapReport:
         f"Repo: {repo_fp.full_name}\n"
         f"Stars: {repo_fp.stars}\n"
         f"Language: {repo_fp.language}\n"
-        f"Topics: {', '.join(repo_fp.topics[:5])}\n"
         f"Flags: {', '.join(flags)}\n"
         f"Description: {repo_fp.description[:300]}\n"
         f"README excerpt:\n{repo_fp.readme_summary[:1500]}\n"
@@ -108,6 +104,7 @@ def analyse_gap(repo_fp, llm: Optional[LLMBridge] = None) -> GapReport:
     }
 
     try:
+        result = llm.structured(messages, schema, temperature=0.2, max_tokens=1536)
         result = llm.structured(messages, schema, temperature=0.2, max_tokens=1024)
         return GapReport(
             repo_name=repo_fp.full_name,
