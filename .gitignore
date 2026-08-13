@@ -6,3 +6,6 @@ __pycache__/
 reports/*.md
 reports/*.html
 darwin_meta/loops/agent_performance.jsonl
+.github_scout_cache/
+.edge_snapshots/
+
