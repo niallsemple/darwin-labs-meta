@@ -1,0 +1,75 @@
+{
+  "agent_configs": {
+    "ceo:outcome": {
+      "outcomes": [
+        {
+          "timestamp": "2026-08-14T15:19:50.918868+00:00",
+          "outcome": 0.2,
+          "notes": "D-0004:kill_queue→SUPPORTED; D-0005:kill_queue→SUPPORTED"
+        }
+      ],
+      "avg_outcome": 0.2,
+      "recommended_temp": 0.1,
+      "recommended_max_tokens": 2048,
+      "prompt_variant": 0,
+      "prompt_scores": {
+        "0": [
+          0.2
+        ]
+      }
+    },
+    "statistician:outcome": {
+      "outcomes": [
+        {
+          "timestamp": "2026-08-14T15:19:50.918903+00:00",
+          "outcome": 0.3,
+          "notes": "D-0004:fail→SUPPORTED; D-0005:pending→SUPPORTED"
+        }
+      ],
+      "avg_outcome": 0.3,
+      "recommended_temp": 0.1,
+      "recommended_max_tokens": 2048,
+      "prompt_variant": 0,
+      "prompt_scores": {
+        "0": [
+          0.3
+        ]
+      }
+    },
+    "sceptic:outcome": {
+      "outcomes": [
+        {
+          "timestamp": "2026-08-14T15:19:50.918918+00:00",
+          "outcome": 0.0,
+          "notes": "D-0004:pending→SUPPORTED; D-0005:fail→SUPPORTED"
+        }
+      ],
+      "avg_outcome": 0.0,
+      "recommended_temp": 0.1,
+      "recommended_max_tokens": 2048,
+      "prompt_variant": 0,
+      "prompt_scores": {
+        "0": [
+          0.0
+        ]
+      }
+    },
+    "explorer:outcome": {
+      "outcomes": [
+        {
+          "timestamp": "2026-08-14T15:19:50.918927+00:00",
+          "outcome": 0.5,
+          "notes": "D-0011:propose→CANDIDATE"
+        }
+      ],
+      "avg_outcome": 0.5,
+      "recommended_temp": 0.3,
+      "recommended_max_tokens": 2048,
+      "prompt_variant": 0,
+      "prompt_scores": {}
+    }
+  },
+  "revision": 1,
+  "created": "2026-08-14T15:19:50.918864+00:00",
+  "prompt_registry": {}
+}
