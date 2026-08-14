@@ -2,45 +2,54 @@
 
 > **An autonomous discovery laboratory that learns to discover.**
 
-DARWIN Labs is a falsification-first research system for finding exploitable
-patterns in data. This edition adds an AI meta-engine: nine LLM-powered
-research agents, a meta-learning loop that improves the system over time,
-and a daily steering committee that keeps everything on track.
+This repo (`darwin-labs-ai` / `darwin-labs-meta`) is the **AI meta-engine** that sits on top of the core [DARWIN Labs](https://github.com/niallsemple/darwin-labs) system. It automates the research pipeline with LLM-powered agents, tracks which agents and prompts produce better outcomes, and runs a self-improvement loop that scouts GitHub for new ideas — all sandboxed so `main` is never touched automatically.
 
 ---
 
 ## What This Is
 
-The original DARWIN Labs was a manual discovery pipeline:
+The original DARWIN Labs is a manual discovery pipeline:
 1. Explorer finds patterns
 2. Statistician tests them
 3. Sceptic attacks them
 4. Gates control promotion
 5. Board meeting decides priorities
 
-**The Meta-Engine automates steps 1-5 with AI agents**, then uses a
-meta-learning loop to track which agents (and which prompts) produce
-better outcomes — and adjusts accordingly.
+**The Meta-Engine automates steps 1-5 with AI agents**, then uses a meta-learning loop to track which agents (and which prompts) produce better outcomes — and adjusts accordingly. A self-improvement engine scouts open-source repos, evaluates gaps against DARWIN's capabilities, and proposes implementations as pull requests.
 
 ```
                     DARWIN META-ENGINE
            ┌─────────────────────────────┐
-           │  AI Agents (9 roles)        │
+           │  AI Agents (6 implemented)  │
+           │  ├─ CEO (board chair)       │
            │  ├─ Explorer                │
-           │  ├─ Chief Scientist         │
            │  ├─ Statistician            │
            │  ├─ Sceptic                 │
-           │  ├─ Execution Engineer      │
            │  ├─ Archaeologist           │
-           │  ├─ Risk Officer            │
-           │  ├─ Strategy Engineer       │
-           │  └─ CEO (board chair)       │
+           │  └─ BaseAgent (framework)   │
+           └─────────────────────────────┘
+                        │
+           ┌─────────────────────────────┐
+           │  Autonomous Discovery Loop  │
+           │  deterministic scan → LLM   │
+           │  hypothesis framing         │
+           └─────────────────────────────┘
+                        │
+           ┌─────────────────────────────┐
+           │  Decay Detection            │
+           │  (re-evaluates SUPPORTED+)  │
            └─────────────────────────────┘
                         │
            ┌─────────────────────────────┐
            │  Meta-Learning Loop         │
            │  tracks agent performance   │
            │  and adjusts prompts/temps  │
+           └─────────────────────────────┘
+                        │
+           ┌─────────────────────────────┐
+           │  Self-Improvement Engine    │
+           │  GitHub scout → gap analyse │
+           │  → implement → sandbox PR   │
            └─────────────────────────────┘
                         │
            ┌─────────────────────────────┐
@@ -55,9 +64,7 @@ better outcomes — and adjusts accordingly.
 
 ### 1. Start the Local LLM
 
-This project requires a local OpenAI-compatible server (llama.cpp, Ollama,
-etc.) running a capable model. We recommend **Kimi-Linear 48B** at Q2_K_L
-(~17 GB, fits in 24 GB RAM).
+This project requires a local OpenAI-compatible server (llama.cpp, Ollama, etc.) running a capable model. We recommend **Kimi-Linear 48B** at Q2_K_L (~17 GB, fits in 24 GB RAM).
 
 ```bash
 # If you have llama.cpp installed:
@@ -71,11 +78,15 @@ cd darwin-labs-ai
 python3 scripts/ai_daily_run.py
 ```
 
-This will:
-- Check LLM health
-- Run the AI board meeting (agents analyse the library)
-- Generate a meta-learning report
-- Commit everything to git
+This runs the full pipeline:
+1. **LLM health check**
+2. **Decay detection** — re-evaluates SUPPORTED+ discoveries with real returns
+3. **Autonomous discovery loop** — deterministic anomaly scan + LLM hypothesis framing
+4. **AI board meeting** — agents analyse the library and produce an agenda
+5. **HTML dashboard** — self-contained, no dependencies
+6. **Meta-learning + outcome attribution** — real outcomes drive prompt evolution
+7. **Self-improvement cycle** — sandboxed: branch + PR, `main` untouched
+8. **Git commit + push**
 
 ### 3. Review the Board Meeting
 
@@ -83,7 +94,13 @@ This will:
 cat reports/board-ai-$(date +%Y-%m-%d).md
 ```
 
-### 4. Steering Committee (once daily)
+### 4. Open the Dashboard
+
+```bash
+open reports/dashboard.html
+```
+
+### 5. Steering Committee (once daily)
 
 ```bash
 export KIMI_API_KEY=your_key
@@ -94,95 +111,201 @@ python3 scripts/steering_committee.py
 
 ## Architecture
 
-### `laboratory/` — Core DARWIN Engine
+### `laboratory/` — Core DARWIN Engine (shared with darwin-labs)
 
 | File | Purpose |
 |---|---|
 | `schema.py` | Discovery lifecycle, gates, statuses |
 | `library_store.py` | JSON-backed Edge Library + Graveyard |
 | `stats.py` | Pure-Python falsification statistics |
+| `experiment.py` | Experiment orchestration |
 
 ### `darwin_meta/` — AI Meta-Engine
 
-| Path | Purpose |
+#### `agents/` — LLM-Powered Research Roles
+
+| File | Role | Status | Output |
+|---|---|---|---|
+| `ceo.py` | **CEO** | ✅ Implemented | Daily agenda, resource allocation, commentary |
+| `explorer.py` | **Explorer** | ✅ Implemented | Candidate discoveries with falsifiable framing |
+| `statistician.py` | **Statistician** | ✅ Implemented | Statistical evaluation + verdict |
+| `sceptic.py` | **Sceptic** | ✅ Implemented | Aggressive attack & falsification |
+| `archaeologist.py` | **Archaeologist** | ✅ Implemented | Lineage links, Graveyard mining |
+| `base_agent.py` | Base class | ✅ Framework | Logging, LLM bridge, structured output |
+
+**Scaffolded (awaiting domain-specific integration):**
+- Chief Scientist — experiment protocol design
+- Execution Engineer — tradeability assessment
+- Risk Officer — live-capital gate
+- Strategy Engineer — strategy specs & code generation
+
+#### `loops/` — System Intelligence
+
+| File | Purpose |
 |---|---|
-| `agents/base_agent.py` | Abstract base with logging |
-| `agents/explorer.py` | Generates hypotheses from data |
-| `agents/statistician.py` | Statistical evaluation |
-| `agents/sceptic.py` | Aggressive attack & falsification |
-| `agents/ceo.py` | Strategic synthesis & agenda |
-| `loops/meta_learning.py` | Tracks performance, adjusts configs |
-| `utils/llm_bridge.py` | Robust OpenAI-compatible client |
-| `ai_board_meeting.py` | Orchestrates agents into daily report |
+| `meta_learning.py` | Tracks agent performance, adjusts temps/prompts/strategies |
+| `outcome_attribution.py` | Attributes real-world outcomes to agent decisions |
+| `decay_detection.py` | Re-evaluates SUPPORTED+ discoveries for decay signals |
+| `decision_log.py` | Immutable decision journal |
+| `meta_state.json` | Persisted meta-learning state |
+
+**Decay signals tracked:**
+- Stale evidence (>14 days)
+- Effect size shrinkage (>50%)
+- Negative recent Sharpe
+- Max drawdown >10%
+- Stuck in SUPPORTED >30 days
+
+#### `self_improve/` — Autonomous Enhancement
+
+| File | Purpose |
+|---|---|
+| `github_scout.py` | Scouts GitHub repos for relevant strategies/techniques |
+| `gap_analyser.py` | Evaluates repos against DARWIN capabilities (local LLM) |
+| `implementer.py` | Generates implementations from approved gaps |
+| `sandbox.py` | Self-improve sandbox: branch → validate → PR |
+| `edge_tracker.py` | Before/after snapshots of discovery counts |
+| `loop.py` | Orchestrates one self-improvement cycle |
+
+**Safety:** All self-improvement happens on a `self-improve/*` branch. The sandbox validates, commits, and opens a PR. `main` is never touched automatically.
+
+#### `discovery/` — Autonomous Discovery
+
+| File | Purpose |
+|---|---|
+| `loop.py` | Deterministic anomaly scan + LLM hypothesis framing |
+| `scanners.py` | Data scanners (price, volume, funding, etc.) |
+| `adapters.py` | Data source adapters |
+
+#### `utils/` — Infrastructure
+
+| File | Purpose |
+|---|---|
+| `llm_bridge.py` | Robust OpenAI-compatible client with retries |
+| `dashboard.py` | Self-contained HTML dashboard generator |
+| `returns_adapter.py` | Maps real returns to discoveries for decay detection |
 
 ### `scripts/` — Orchestration
 
 | Script | Purpose |
 |---|---|
-| `ai_daily_run.py` | Full daily pipeline |
+| `ai_daily_run.py` | **Full daily pipeline** (8 steps, see above) |
 | `steering_committee.py` | Daily K3 strategic check |
-| `board_meeting.py` | Legacy static report (preserved) |
+| `run_demo.py` | Demo run for testing |
+
+### `library/` — Live Data
+
+| File | Purpose |
+|---|---|
+| `edges.json` | Live discoveries (synced with darwin-labs) |
+| `graveyard.json` | Killed discoveries |
+| `returns_sources.json` | Attribution mapping for real returns |
 
 ---
 
-## The Learning Loop
+## The Learning Loops
 
-The meta-learning loop (`darwin_meta/loops/meta_learning.py`) is simple but
-powerful:
-
-1. **Log** every agent run (prompt, latency, tokens, output summary)
-2. **Score** outcomes via human feedback or automated metrics
-3. **Adjust** temperature, max_tokens, and strategy based on what worked
-4. **Report** trends so you can see which agents improve over time
-
-Feed back outcomes:
+### Meta-Learning Loop
 
 ```python
 from darwin_meta.loops.meta_learning import MetaLearningLoop, AgentScore
 
 loop = MetaLearningLoop()
 loop.ingest_outcomes([
-    AgentScore("statistician", "h1_review", outcome=0.9, notes=" nailed the p-value concern"),
+    AgentScore("statistician", "h1_review", outcome=0.9, notes="nailed the p-value concern"),
     AgentScore("sceptic", "h1_review", outcome=0.3, notes="missed the regime-dependency"),
 ])
-```
-
-Then inspect the meta-report:
-
-```python
 print(loop.render_report_md())
 ```
 
----
+Tracks per-agent success rates, latency, token usage, and outcome quality. Adjusts temperature and strategy based on what worked.
 
-## The Nine Agent Roles
+### Outcome Attribution
 
-| # | Role | AI Class | Output |
-|---|---|---|---|
-| 1 | **CEO** | `CEOAgent` | Daily agenda, resource allocation, commentary |
-| 2 | **Explorer** | `ExplorerAgent` | Candidate discoveries with falsifiable framing |
-| 3 | **Chief Scientist** | *(planned)* | Experiment protocols |
-| 4 | **Sceptic** | `ScepticAgent` | Attacks, hidden assumptions, kill probability |
-| 5 | **Statistician** | `StatisticianAgent` | Significance, concerns, verdict |
-| 6 | **Execution Engineer** | *(planned)* | Tradeability assessment |
-| 7 | **Archaeologist** | *(planned)* | Lineage links to Library/Graveyard |
-| 8 | **Risk Officer** | *(planned)* | Stake caps, kill-switch conditions |
-| 9 | **Strategy Engineer** | *(planned)* | Strategy specs & code |
+Links real-world returns (from live or shadow strategies) back to the agent decisions that produced them. This closes the loop: agents don't just get scored on output quality — they get scored on **actual edge production**.
 
-The first five are implemented. The remaining four are scaffolded and
-await domain-specific integrations.
+### Decay Detection
+
+Periodically re-evaluates all SUPPORTED/VALIDATED/SHADOW discoveries:
+
+| Score | Action |
+|---|---|
+| 0.0-0.2 | 🟢 Healthy |
+| 0.2-0.4 | 🟡 Watch |
+| 0.4-0.7 | 🟠 Investigate |
+| 0.7+ | 🔴 Escalate to board meeting |
+
+### Self-Improvement Cycle
+
+```
+[1] Take before snapshot
+[2] Scout GitHub (max 3 repos)
+[3] Evaluate gaps with local LLM
+[4] If approved (confidence ≥ 0.7), implement in sandbox
+[5] Validate, commit to branch, open PR
+[6] Take after snapshot
+[7] Generate report
+```
 
 ---
 
 ## Status Lifecycle
+
+Same as core DARWIN Labs:
 
 ```
 CANDIDATE → TESTING → SUPPORTED → VALIDATED → SHADOW → MICRO_LIVE → PROMOTED
     └──────────────────── KILLED (graveyard) ──────────────────────┘
 ```
 
-No discovery promotes itself. Gates are enforced in code by
-`laboratory/library_store.py`.
+No discovery promotes itself. Gates are enforced in code by `laboratory/library_store.py`.
+
+---
+
+## Dashboard
+
+A self-contained HTML dashboard is generated daily at `reports/dashboard.html`. No external dependencies — pure HTML/CSS/JS.
+
+**Sections:**
+- Live discovery count, graveyard count, survival rate
+- Status breakdown with progress bars
+- Full live discovery table (ID, title, lab, status, effect, n, p-value)
+- Recent graveyard entries with kill causes
+- Decay signals with severity
+- Agent performance (last 50 runs, success rate, latency, health)
+
+---
+
+## Relationship to Core DARWIN Labs
+
+```
+      darwin-labs-ai (this repo)          darwin-labs (core repo)
+      ─────────────────────────           ─────────────────────────
+      AI agents, meta-learning            29 human-readable roles
+      Autonomous discovery                Manual + connected labs
+      Self-improvement engine             Strategy registry
+      HTML dashboard                      Edge Library + Graveyard
+      
+               │                                │
+               └────────── shared library ──────┘
+               (edges.json, graveyard.json,
+                returns_sources.json)
+```
+
+The meta-engine reads and writes the same `library/` JSON files as the core system. You can run either pipeline (or both) — they converge on the same Edge Library.
+
+---
+
+## Founding Rules
+
+1. **Every hypothesis must be falsifiable before it enters the library.**
+2. **In-sample backtests confirm hypotheses; they never validate them.** Validation is out-of-sample or it is nothing.
+3. **Multiple-testing correction is not optional** (BH-FDR in `stats.py`).
+4. **Execution-adjusted results are the only results that count for promotion.**
+5. **The Graveyard is as valuable as the Library** — failed ideas are memory.
+6. **Freeze before you trust.** Out-of-sample windows are frozen at discovery time.
+7. **No agent promotes its own discovery.** Independent gate approvals required.
+8. **Self-improvement is sandboxed.** `main` is never touched automatically.
 
 ---
 
