@@ -18,6 +18,7 @@ from darwin_meta.agents.statistician import StatisticianAgent
 from darwin_meta.agents.sceptic import ScepticAgent
 from darwin_meta.agents.archaeologist import ArchaeologistAgent
 from darwin_meta.loops.decay_detection import scan_library, render_decay_report
+from darwin_meta.loops.decision_log import log_decision
 from laboratory.experiment import results_for_discovery, latest_metrics
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -148,6 +149,9 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         try:
             report = stat_agent.run(ctx, verified)
             stat_reports.append(f"{d['id']}: {report['verdict']} — {report['recommendation'][:100]}")
+            log_decision("statistician", d["id"], report["verdict"],
+                         {"n": report.get("n"), "p_value": report.get("p_value"),
+                          "concerns": report.get("concerns", [])[:3]})
             print(f"    → {report['verdict']}", flush=True)
             time.sleep(2)
         except Exception as e:
@@ -167,6 +171,9 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
                 f"{d['id']}: {report['verdict']} (kill_prob={report['kill_probability']:.2f}) — "
                 f"top attack: {report['attacks'][0]['attack'][:80] if report['attacks'] else 'none'}"
             )
+            log_decision("sceptic", d["id"], report["verdict"],
+                         {"kill_probability": report["kill_probability"],
+                          "n_attacks": len(report.get("attacks", []))})
             print(f"    → {report['verdict']} (kill_prob={report['kill_probability']:.2f})", flush=True)
             time.sleep(2)
         except Exception as e:
@@ -187,6 +194,12 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
     )
     try:
         ceo_decision = ceo_agent.run("\n".join(lib_summary_lines), agent_reports)
+        for did in ceo_decision.get("kill_queue", []):
+            log_decision("ceo", did, "kill_queue")
+        for did in ceo_decision.get("build_queue", []):
+            log_decision("ceo", did, "build_queue")
+        for did in ceo_decision.get("investigate_queue", []):
+            log_decision("ceo", did, "investigate_queue")
         print("    → CEO synthesis complete", flush=True)
     except Exception as e:
         ceo_decision = {

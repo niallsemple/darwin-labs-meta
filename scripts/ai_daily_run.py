@@ -122,14 +122,22 @@ def main() -> None:
         summary["steps"]["dashboard"] = {"status": "error", "error": str(e)}
         print(f"Dashboard failed: {e}")
 
-    # 6. Meta-learning report
+    # 6. Meta-learning: attribute real outcomes to agent decisions, THEN adapt
     try:
+        from darwin_meta.loops.outcome_attribution import attribute_outcomes, render_outcome_md
+        outcome_res = attribute_outcomes()
         loop = MetaLearningLoop()
-        meta_report = loop.render_report_md()
+        if outcome_res["scores"]:
+            loop.ingest_outcomes(outcome_res["scores"])  # real outcomes now drive prompt evolution
+        meta_report = loop.render_report_md() + "\n" + render_outcome_md(outcome_res)
         meta_path = ROOT / "reports" / f"meta-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.md"
         meta_path.write_text(meta_report)
-        summary["steps"]["meta_report"] = {"status": "ok", "report": str(meta_path)}
-        print(f"Meta report: {meta_path}")
+        summary["steps"]["meta_report"] = {
+            "status": "ok", "report": str(meta_path),
+            "outcome_agents": {a: s["avg_score"] for a, s in outcome_res["agents"].items()},
+        }
+        print(f"Meta report: {meta_path} "
+              f"({len(outcome_res['agents'])} agents scored on real outcomes)")
     except Exception as e:
         summary["steps"]["meta_report"] = {"status": "error", "error": str(e)}
         print(f"Meta report failed: {e}")

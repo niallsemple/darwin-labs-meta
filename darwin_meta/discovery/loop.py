@@ -14,6 +14,7 @@ from typing import Optional
 from darwin_meta.discovery.adapters import ADAPTERS
 from darwin_meta.discovery.scanners import SCANNERS, Anomaly
 from darwin_meta.utils.llm_bridge import LLMBridge
+from darwin_meta.loops.decision_log import log_decision
 from laboratory import library_store as store
 from laboratory.schema import Discovery
 from laboratory.stats import benjamini_hochberg
@@ -173,6 +174,8 @@ def _register_candidate(lab: str, a: Anomaly, cand: dict, summary: dict) -> None
               f"n={a.n} t={a.t} p={a.p} trials_tested={a.trials_tested} "
               f"window={a.window[0]}→{a.window[1]}"),
         kind="experiment")
+    log_decision("explorer", d.id, "propose",
+                 {"signature": a.signature, "p": a.p, "trials_tested": a.trials_tested})
     summary["new_candidates"].append({"id": d.id, "title": d.title,
                                       "signature": a.signature, "p": a.p})
     print(f"  [Discovery] NEW CANDIDATE {d.id}: {a.signature} (p={a.p})")
