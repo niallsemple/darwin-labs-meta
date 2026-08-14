@@ -93,6 +93,11 @@ def main() -> dict:
     }
 
 
+def run(ctx):
+    artifact = main()
+    return {"artifact": artifact}
+
+
 if __name__ == "__main__":
     artifact = main()
     # Blueprint expects AutomationOutput JSON
