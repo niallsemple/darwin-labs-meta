@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .schema import (Discovery, Evidence, GATE_REQUIREMENTS, GATE_VERDICTS,
-                     STATUSES, next_id, utcnow)
+from .schema import (Discovery, Evidence, EVIDENCE_REQUIREMENTS,
+                     GATE_REQUIREMENTS, GATE_VERDICTS, STATUS_ORDER, STATUSES,
+                     next_id, utcnow)
 
 ROOT = Path(__file__).resolve().parent.parent
 LIBRARY_PATH = ROOT / "library" / "edges.json"
@@ -87,13 +88,37 @@ def record_gate(discovery_id: str, gate: str, verdict: str, note: str = "") -> D
 
 
 def transition(discovery_id: str, new_status: str, note: str = "") -> Discovery:
-    """Move a discovery along the lifecycle, enforcing gate requirements.
-    KILLED goes to the graveyard instead of staying in the library."""
+    """Move a discovery along the lifecycle.
+
+    Enforces three rules:
+    1. Sequential progression — a discovery advances exactly ONE status at a
+       time (CANDIDATE -> TESTING -> SUPPORTED -> ...). Skipping stages is
+       impossible. KILLED is reachable from any status. Backward moves are
+       refused; a regressed discovery must be KILLED and re-entered.
+    2. Gates — every gate required for the target status must say "pass".
+    3. Evidence artifacts — the target status's required evidence kinds must
+       be present on the record. Verdicts without artifacts do not count.
+    """
     if new_status not in STATUSES:
         raise GateError(f"bad status {new_status!r}")
     lib = load_library()
     d = _find(lib, discovery_id)
+    old = d.status
 
+    if old == "KILLED":
+        raise GateError(f"{discovery_id} is in the graveyard; it cannot transition")
+
+    # Rule 1: sequential progression (KILLED exempt — falsification respects no queue)
+    if new_status != "KILLED":
+        if new_status == old:
+            raise GateError(f"{discovery_id} is already {old}")
+        next_idx = STATUS_ORDER[old] + 1
+        if STATUS_ORDER.get(new_status, -1) != next_idx:
+            raise GateError(
+                f"{discovery_id} cannot jump {old}->{new_status}: lifecycle is "
+                f"sequential. Next allowed: {STATUSES[next_idx]} (or KILLED).")
+
+    # Rule 2: gates
     required = GATE_REQUIREMENTS[new_status]
     missing = [g for g in required if d.gates.get(g) != "pass"]
     if missing:
@@ -101,7 +126,21 @@ def transition(discovery_id: str, new_status: str, note: str = "") -> Discovery:
             f"{discovery_id} cannot enter {new_status}: gates not passed: {missing}. "
             "No discovery promotes itself.")
 
-    old = d.status
+    # Rule 3: evidence artifacts
+    needed_kinds = EVIDENCE_REQUIREMENTS.get(new_status, ())
+    if needed_kinds:
+        present = {e.kind for e in d.evidence}
+        if not present & set(needed_kinds):
+            raise GateError(
+                f"{discovery_id} cannot enter {new_status}: missing evidence artifact "
+                f"of kind {'/'.join(needed_kinds)} (has: {sorted(present) or 'none'}). "
+                "Gates must be backed by artifacts, not assertions.")
+
+    if new_status == "PROMOTED" and not d.strategy_ref:
+        raise GateError(
+            f"{discovery_id} cannot be PROMOTED without strategy_ref — "
+            "a promoted discovery must point at an entry in strategies/.")
+
     d.status = new_status
     d.history.append({"ts": utcnow(), "event": f"status:{old}->{new_status}", "note": note})
 

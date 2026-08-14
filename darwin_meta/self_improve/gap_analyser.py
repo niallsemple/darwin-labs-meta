@@ -105,7 +105,6 @@ def analyse_gap(repo_fp, llm: Optional[LLMBridge] = None) -> GapReport:
 
     try:
         result = llm.structured(messages, schema, temperature=0.2, max_tokens=1536)
-        result = llm.structured(messages, schema, temperature=0.2, max_tokens=1024)
         return GapReport(
             repo_name=repo_fp.full_name,
             useful=result.get("useful", False),

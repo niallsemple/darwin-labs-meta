@@ -18,8 +18,43 @@ from darwin_meta.agents.statistician import StatisticianAgent
 from darwin_meta.agents.sceptic import ScepticAgent
 from darwin_meta.agents.archaeologist import ArchaeologistAgent
 from darwin_meta.loops.decay_detection import scan_library, render_decay_report
+from laboratory.experiment import results_for_discovery, latest_metrics
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _verified_data_summary(d: dict) -> str:
+    """Assemble the VERIFIED numbers for a discovery: immutable experiment
+    results first, library metrics second (labelled unverified), evidence
+    notes last. The Statistician critiques these — it never invents them."""
+    lines = []
+    results = results_for_discovery(d["id"])
+    if results:
+        lines.append(f"EXPERIMENT RESULTS (immutable store, {len(results)} run(s)):")
+        for r in results[-3:]:
+            m = r.get("metrics", {})
+            lines.append(
+                f"  result {r.get('result_hash')} (spec {r.get('spec_hash')}, "
+                f"{r.get('created', '?')[:10]}): "
+                + ", ".join(f"{k}={v}" for k, v in m.items()))
+    else:
+        lines.append("EXPERIMENT RESULTS: none — no deterministic experiment "
+                     "has been recorded for this discovery.")
+
+    m = d.get("metrics", {})
+    if any(v is not None for v in m.values()):
+        lines.append("LIBRARY METRICS (self-reported, UNVERIFIED):")
+        lines.append("  " + ", ".join(f"{k}={v}" for k, v in m.items()
+                                       if v is not None and v != ""))
+    ev = d.get("evidence", [])
+    if ev:
+        lines.append("EVIDENCE NOTES (latest 3):")
+        for e in ev[-3:]:
+            lines.append(f"  [{e.get('kind')}] {e.get('author')}: {e.get('note', '')[:200]}")
+    lines.append("Your job: critique whether these numbers are believable "
+                 "(sample size, leakage, multiple testing, regimes). "
+                 "Do NOT calculate new statistics.")
+    return "\n".join(lines)
 
 
 def _summarise_discovery(d: dict) -> str:
@@ -99,15 +134,19 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         archaeologist_notes.append(f"Archaeologist error: {e}")
         print(f"    → ERROR: {e}", flush=True)
 
-    # Run Statistician on each SUPPORTED+ discovery
+    # Run Statistician on each SUPPORTED+ discovery.
+    # The Statistician receives VERIFIED data — experiment results from the
+    # immutable store plus the record's metrics — and critiques believability.
+    # It is never the source of statistical truth.
     stat_reports = []
     stat_agent = StatisticianAgent(llm)
     targets = [d for d in lib if d["status"] in ("SUPPORTED", "VALIDATED", "SHADOW")]
     for i, d in enumerate(targets, 1):
         ctx = _summarise_discovery(d)
+        verified = _verified_data_summary(d)
         print(f"  [Statistician] {d['id']} ({i}/{len(targets)})...", flush=True)
         try:
-            report = stat_agent.run(ctx, "See evidence in library record.")
+            report = stat_agent.run(ctx, verified)
             stat_reports.append(f"{d['id']}: {report['verdict']} — {report['recommendation'][:100]}")
             print(f"    → {report['verdict']}", flush=True)
             time.sleep(2)

@@ -54,6 +54,30 @@ GATE_REQUIREMENTS = {
 GATES = ["sceptic", "statistician", "execution", "risk"]
 GATE_VERDICTS = ["pending", "pass", "fail", "watch"]
 
+# Sequential lifecycle: a discovery may only advance ONE step at a time.
+# KILLED is reachable from any status (falsification respects no queue).
+STATUS_ORDER = {s: i for i, s in enumerate(STATUSES) if s != "KILLED"}
+
+# Evidence artifacts required BEFORE entering each status. A transition is
+# refused unless the discovery carries at least one Evidence entry of one of
+# the listed kinds. This is what makes gates falsifiable: verdicts must be
+# backed by artifacts, not assertions.
+EVIDENCE_REQUIREMENTS = {
+    "CANDIDATE": (),
+    "TESTING": (),
+    # statistician's falsification run or a deterministic experiment artifact
+    "SUPPORTED": ("falsification", "experiment"),
+    # out-of-sample persistence evidence
+    "VALIDATED": ("oos",),
+    # execution-feasibility evidence (spread/slippage/fills)
+    "SHADOW": ("execution",),
+    # shadow-period forward P&L evidence
+    "MICRO_LIVE": ("oos", "execution"),
+    # live execution evidence + a strategy reference (checked separately)
+    "PROMOTED": ("execution",),
+    "KILLED": (),
+}
+
 ID_PATTERN = re.compile(r"^D-\d{4,}$")
 
 
@@ -67,7 +91,7 @@ class Evidence:
     date: str
     author: str            # explorer / statistician / sceptic / archaeologist / ...
     note: str
-    kind: str = "observation"  # observation | falsification | oos | decay | execution
+    kind: str = "observation"  # observation | falsification | experiment | oos | decay | execution
 
 
 @dataclass

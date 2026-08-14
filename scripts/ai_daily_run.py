@@ -6,8 +6,9 @@ Orchestrates the full AI pipeline:
 3. Run AI board meeting (agents analyse library)
 4. Generate HTML dashboard
 5. Update meta-learning loop + write meta-report
-6. Self-Improvement cycle (scouts GitHub, evaluates, implements)
-7. Git commit + push
+6. Self-Improvement cycle — SANDBOXED: implementations happen on a
+   self-improve/* branch and leave as a pull request; main is untouched
+7. Git commit + push (daily reports only, on the current branch)
 
 Usage: python3 scripts/ai_daily_run.py
 """

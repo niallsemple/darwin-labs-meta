@@ -23,6 +23,7 @@ from darwin_meta.utils.llm_bridge import LLMBridge
 from darwin_meta.self_improve.github_scout import scout, load_cache
 from darwin_meta.self_improve.gap_analyser import analyse_gap
 from darwin_meta.self_improve.implementer import implement
+from darwin_meta.self_improve.sandbox import SelfImproveSandbox
 from darwin_meta.self_improve.edge_tracker import take_snapshot, compare_snapshots, load_latest_snapshot
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -69,6 +70,7 @@ def run_one_cycle(llm: Optional[LLMBridge] = None,
 
     # 3. Evaluate each repo
     print(f"\n[3/5] Evaluating gaps with local LLM...")
+    sandbox = SelfImproveSandbox()
     implemented_count = 0
     for repo_fp in repos:
         print(f"\n  Evaluating: {repo_fp.full_name} ({repo_fp.stars}★)")
@@ -86,9 +88,12 @@ def run_one_cycle(llm: Optional[LLMBridge] = None,
                 })
 
                 if implemented_count < max_implementations:
-                    print(f"    → IMPLEMENTING (gap: {report.gaps[0][:60]}...)")
+                    print(f"    → IMPLEMENTING on sandbox branch (gap: {report.gaps[0][:60]}...)")
+                    sandbox.ensure_branch()
                     result = implement(report, llm)
                     if result.success:
+                        sandbox.register(result.files_created + result.files_modified
+                                         + result.tests_added)
                         summary["implemented"].append({
                             "repo": report.repo_name,
                             "files_created": result.files_created,
@@ -113,6 +118,21 @@ def run_one_cycle(llm: Optional[LLMBridge] = None,
         except Exception as e:
             summary["errors"].append(f"Evaluation error for {repo_fp.full_name}: {e}")
             print(f"    → ERROR: {e}")
+
+    # 3b. Sandbox finalise: validate, commit to branch, push, open PR.
+    # If validation fails, everything is rolled back and main is untouched.
+    print(f"\n[3b/5] Sandbox: validating and publishing proposals...")
+    sandbox_result = sandbox.finalise()
+    summary["sandbox"] = sandbox_result
+    if sandbox_result.get("committed"):
+        print(f"  → proposal on branch {sandbox_result['branch']}"
+              + (f", PR: {sandbox_result['pr_url']}" if sandbox_result.get("pr_url") else ""))
+        print("  → main untouched — a human merges the PR")
+    elif sandbox_result.get("active"):
+        print("  → sandbox rejected the implementation; rolled back")
+        # implementations were rolled back — move them out of "implemented"
+        summary["errors"].append("sandbox validation failed; implementation rolled back")
+        summary["implemented"] = []
 
     # 4. After snapshot (immediate — for baseline; real comparison needs days)
     print(f"\n[4/5] Taking after snapshot...")
