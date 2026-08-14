@@ -48,21 +48,27 @@ def main() -> None:
     if not healthy:
         print("WARNING: LLM not responding. Board meeting may fail.")
 
-    # 2. Decay detection (deterministic, no LLM needed)
+    # 2. Decay detection (deterministic, no LLM needed) — fed with REAL returns
     try:
-        decay_reports = scan_library(ROOT / "library" / "edges.json")
+        from darwin_meta.utils.returns_adapter import build_returns_source
+        returns_source, returns_prov = build_returns_source(ROOT / "library" / "returns_sources.json")
+        decay_reports = scan_library(ROOT / "library" / "edges.json", returns_source)
         decay_path = ROOT / "reports" / f"decay-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.md"
         decay_path.write_text(render_decay_report(decay_reports))
         summary["steps"]["decay_detection"] = {
             "status": "ok",
             "reports": len(decay_reports),
             "report_path": str(decay_path),
+            "returns_provenance": returns_prov,
         }
         print(f"Decay detection: {len(decay_reports)} signals → {decay_path}")
+        for did, prov in returns_prov.items():
+            print(f"  returns[{did}]: {prov}")
     except Exception as e:
         summary["steps"]["decay_detection"] = {"status": "error", "error": str(e)}
         print(f"Decay detection failed: {e}")
         decay_reports = []
+        returns_source = None
 
     # 3. AI Board Meeting
     try:
@@ -73,6 +79,7 @@ def main() -> None:
             report_path,
             llm=llm,
             meta_log_path=ROOT / "darwin_meta" / "loops" / "agent_performance.jsonl",
+            returns_source=returns_source,
         )
         summary["steps"]["ai_board_meeting"] = {"status": "ok", "report": str(report_path)}
         print(f"AI Board Meeting: {report_path}")

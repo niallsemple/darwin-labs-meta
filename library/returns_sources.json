@@ -1,0 +1,37 @@
+{
+  "_comment": "Decay-monitoring returns sources. Providers are tried in order; the first with >= min_obs observations wins. forward_ledger = frozen shadow P&L (gold standard, active once the EqCalendarTilt freeze starts 2026-08-17). weekday_returns = recent equal-weight basket returns for the discovery's weekday from the equities daily data (monitoring proxy). Weekday: Monday=0, Tuesday=1, Wednesday=2.",
+  "D-0004": {
+    "providers": [
+      {
+        "type": "forward_ledger",
+        "path": "../darwin-labs/labs/equities/forward/eqcalendartilt_ledger.csv",
+        "column": "net",
+        "min_obs": 5
+      },
+      {
+        "type": "weekday_returns",
+        "data_dir": "../darwin-labs/labs/equities/data_repl",
+        "weekday": 1,
+        "window_days": 90,
+        "min_obs": 5
+      }
+    ]
+  },
+  "D-0005": {
+    "providers": [
+      {
+        "type": "forward_ledger",
+        "path": "../darwin-labs/labs/equities/forward/eqcalendartilt_ledger.csv",
+        "column": "net",
+        "min_obs": 5
+      },
+      {
+        "type": "weekday_returns",
+        "data_dir": "../darwin-labs/labs/equities/data_repl",
+        "weekday": 2,
+        "window_days": 90,
+        "min_obs": 5
+      }
+    ]
+  }
+}
