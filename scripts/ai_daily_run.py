@@ -42,6 +42,15 @@ def sh(cmd: list[str], timeout: int = 120) -> tuple[int, str]:
 def main() -> None:
     summary = {"steps": {}, "timestamp": datetime.now(timezone.utc).isoformat()}
 
+    # 0. One library, one writer. This repo's library/ is a symlink to
+    #    darwin-labs/library. If a second real copy ever reappears, stop —
+    #    that divergence made the 09-13 Aug board meetings report stale
+    #    numbers (7 live/3 killed) while the core lab was at 36/16.
+    from laboratory import library_store as _store
+    lib_real = _store.assert_single_library()
+    summary["steps"]["library_check"] = {"status": "ok", "path": str(lib_real)}
+    print("library:", lib_real)
+
     # 1. Health check
     llm = LLMBridge()
     healthy = llm.health()

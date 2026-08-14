@@ -9,3 +9,7 @@ darwin_meta/loops/agent_performance.jsonl
 .github_scout_cache/
 .edge_snapshots/
 
+
+# superseded by symlinks to darwin-labs/ (delete once verified)
+library.old/
+laboratory.old/
