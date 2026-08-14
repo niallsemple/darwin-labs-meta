@@ -562,5 +562,52 @@
         "status": "CANDIDATE"
       }
     ]
+  },
+  {
+    "id": "D-0011",
+    "title": "[AUTO:CASHCAT:1h]",
+    "lab": "hl_crypto",
+    "status": "CANDIDATE",
+    "created": "2026-08-14T14:36:55+00:00",
+    "freeze_ts": null,
+    "hypothesis": "CASHCAT’s 1-hour return autocorrelation will remain negative (mean-reversion) for at least the next 30 calendar days.",
+    "falsifiable_prediction": "Mean of next 30 daily lag-1 autocorr values < -0.10.",
+    "kill_criteria": "Mean of next 30 daily lag-1 autocorr values ≥ -0.05.",
+    "metrics": {
+      "effect_size": null,
+      "effect_unit": "",
+      "n": null,
+      "t_stat": null,
+      "p_value": null,
+      "oos_effect": null,
+      "oos_sharpe": null,
+      "execution_adjusted": null,
+      "max_drawdown": null
+    },
+    "gates": {
+      "sceptic": "pending",
+      "statistician": "pending",
+      "execution": "pending",
+      "risk": "pending"
+    },
+    "kill_cause": "",
+    "regime_notes": "Predictions hold only during overlapping UTC trading sessions when CASHCAT is active.",
+    "lineage": [],
+    "strategy_ref": "",
+    "evidence": [
+      {
+        "date": "2026-08-14",
+        "author": "anomaly_engine",
+        "note": "scanner=return_autocorr signature=autocorr:CASHCAT:1h effect=-0.1385 lag-1 autocorr of 1h returns n=818 t=-3.9606 p=7.5e-05 trials_tested=383 window=2026-07-11→2026-08-14",
+        "kind": "experiment"
+      }
+    ],
+    "history": [
+      {
+        "ts": "2026-08-14T14:36:55+00:00",
+        "event": "created",
+        "status": "CANDIDATE"
+      }
+    ]
   }
 ]

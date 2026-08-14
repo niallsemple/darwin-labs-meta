@@ -2,13 +2,15 @@
 
 Orchestrates the full AI pipeline:
 1. Check local LLM health
-2. Run decay detection (deterministic)
-3. Run AI board meeting (agents analyse library)
-4. Generate HTML dashboard
-5. Update meta-learning loop + write meta-report
-6. Self-Improvement cycle — SANDBOXED: implementations happen on a
+2. Run decay detection (deterministic, fed with real returns)
+3. Autonomous discovery loop (deterministic anomaly scan -> Explorer frames
+   hypotheses -> new CANDIDATEs enter the library)
+4. Run AI board meeting (agents analyse library)
+5. Generate HTML dashboard
+6. Update meta-learning loop + write meta-report
+7. Self-Improvement cycle — SANDBOXED: implementations happen on a
    self-improve/* branch and leave as a pull request; main is untouched
-7. Git commit + push (daily reports only, on the current branch)
+8. Git commit + push (daily reports only, on the current branch)
 
 Usage: python3 scripts/ai_daily_run.py
 """
@@ -70,7 +72,24 @@ def main() -> None:
         decay_reports = []
         returns_source = None
 
-    # 3. AI Board Meeting
+    # 3. Autonomous Discovery Loop (deterministic scan; LLM frames hypotheses)
+    try:
+        from darwin_meta.discovery.loop import run_discovery_loop
+        disc = run_discovery_loop(llm=llm, max_new_candidates=3)
+        summary["steps"]["discovery"] = {
+            "status": "ok",
+            "tests_run": disc["tests_run"],
+            "fdr_survivors": disc["fdr_survivors"],
+            "new_candidates": len(disc["new_candidates"]),
+            "skipped_duplicates": disc["skipped_duplicates"],
+        }
+        print(f"Discovery: {disc['tests_run']} tests, {disc['fdr_survivors']} FDR survivors, "
+              f"{len(disc['new_candidates'])} new candidates")
+    except Exception as e:
+        summary["steps"]["discovery"] = {"status": "error", "error": str(e)}
+        print(f"Discovery loop failed: {e}")
+
+    # 4. AI Board Meeting
     try:
         report_path = ROOT / "reports" / f"board-ai-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.md"
         text = generate_ai_boardMeeting(
@@ -88,7 +107,7 @@ def main() -> None:
         print(f"AI Board Meeting failed: {e}")
         decay_reports = []
 
-    # 4. Dashboard generation
+    # 5. Dashboard generation
     try:
         dash_path = generate_dashboard(
             ROOT / "library" / "edges.json",
@@ -103,7 +122,7 @@ def main() -> None:
         summary["steps"]["dashboard"] = {"status": "error", "error": str(e)}
         print(f"Dashboard failed: {e}")
 
-    # 5. Meta-learning report
+    # 6. Meta-learning report
     try:
         loop = MetaLearningLoop()
         meta_report = loop.render_report_md()
@@ -115,7 +134,7 @@ def main() -> None:
         summary["steps"]["meta_report"] = {"status": "error", "error": str(e)}
         print(f"Meta report failed: {e}")
 
-    # 6. Self-Improvement Cycle (scouts GitHub, evaluates, implements)
+    # 7. Self-Improvement Cycle (sandboxed: branch + PR, never main)
     try:
         si_summary = run_self_improve(llm=llm, max_repos=2, min_confidence=0.75, max_implementations=1)
         summary["steps"]["self_improve"] = {
@@ -130,7 +149,7 @@ def main() -> None:
         summary["steps"]["self_improve"] = {"status": "error", "error": str(e)}
         print(f"Self-improve failed: {e}")
 
-    # 7. Git commit + push
+    # 8. Git commit + push
     rc, out = sh(["git", "add", "-A"])
     rc2, out2 = sh(["git", "-c", "user.name=darwin-meta",
                     "-c", "user.email=darwin@local",
@@ -149,7 +168,7 @@ def main() -> None:
     else:
         print("Git: push skipped or failed:", out3[:200])
 
-    # 8. Summary
+    # 9. Summary
     print(f"\nDARWIN_AI_SUMMARY={json.dumps(summary)}")
 
 
