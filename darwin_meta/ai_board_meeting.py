@@ -38,7 +38,7 @@ def _days_since(ts_str: str) -> int | None:
         return None
 
 
-def _stale_candidate_summary(lib: list[dict]) -> str:
+def _stale_candidate_summary(lib: list[dict]) -> tuple[str, list[str]]:
     """Produce a deterministic stale-CANDIDATE report for the CEO.
 
     A CANDIDATE is flagged stale if any of:
@@ -50,7 +50,7 @@ def _stale_candidate_summary(lib: list[dict]) -> str:
     lines = []
     candidates = [d for d in lib if d.get("status") == "CANDIDATE"]
     if not candidates:
-        return "No CANDIDATEs in library."
+        return "No CANDIDATEs in library.", []
 
     stale_ids = []
     for d in candidates:
@@ -78,14 +78,14 @@ def _stale_candidate_summary(lib: list[dict]) -> str:
             )
 
     if not lines:
-        return f"All {len(candidates)} CANDIDATEs are active (no stale signals)."
+        return f"All {len(candidates)} CANDIDATEs are active (no stale signals).", []
 
     header = f"STALE CANDIDATES ({len(stale_ids)}/{len(candidates)}):\n"
     footer = (
         f"\nRecommendation: demote {len(stale_ids)} stale CANDIDATE(s) to BACKLOG "
         f"to free WIP slots for active work."
     )
-    return header + "\n".join(lines) + footer
+    return header + "\n".join(lines) + footer, stale_ids
 
 
 def _verified_data_summary(d: dict) -> str:
