@@ -89,7 +89,7 @@ class ArchaeologistAgent(BaseAgent):
             "required": ["lineage_links", "recurring_failures", "lab_survival_rates",
                          "zombie_hypotheses", "institutional_notes"],
         }
-        return self._call(prompt, temperature=0.3, structured=True, schema=schema)
+        return self._call(prompt, temperature=0.3, structured=True, schema=schema, max_tokens=512)
 
     def _build_context(self, library: list[dict], graveyard: list[dict],
                        meta_logs: list[dict] | None) -> str:
