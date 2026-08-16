@@ -186,20 +186,22 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
     try:
         arch_agent = ArchaeologistAgent(llm)
         arch_report = arch_agent.run(lib, grave)
-        if arch_report.get("recurring_failures"):
-            archaeologist_notes.append("**Recurring failure patterns:**")
-            for rf in arch_report["recurring_failures"][:3]:
-                archaeologist_notes.append(f"- {rf['pattern']} ({rf['count']} times)")
-        if arch_report.get("institutional_notes"):
-            archaeologist_notes.append("**Institutional notes:**")
-            for note in arch_report["institutional_notes"][:3]:
-                archaeologist_notes.append(f"- {note}")
-        if arch_report.get("zombie_hypotheses"):
-            archaeologist_notes.append("**Zombie hypotheses:**")
-            for zh in arch_report["zombie_hypotheses"][:2]:
-                archaeologist_notes.append(f"- '{zh['title_pattern']}' seen {zh['occurrences']} times")
+        if isinstance(arch_report, dict):
+            if arch_report.get("recurring_failures"):
+                archaeologist_notes.append("**Recurring failure patterns:**")
+                for rf in arch_report["recurring_failures"][:3]:
+                    archaeologist_notes.append(f"- {rf['pattern']} ({rf['count']} times)")
+            if arch_report.get("institutional_notes"):
+                archaeologist_notes.append("**Institutional notes:**")
+                for note in arch_report["institutional_notes"][:3]:
+                    archaeologist_notes.append(f"- {note}")
+            if arch_report.get("zombie_hypotheses"):
+                archaeologist_notes.append("**Zombie hypotheses:**")
+                for zh in arch_report["zombie_hypotheses"][:2]:
+                    archaeologist_notes.append(f"- '{zh['title_pattern']}' seen {zh['occurrences']} times")
+        else:
+            archaeologist_notes.append(f"Archaeologist returned unexpected type: {type(arch_report).__name__}")
         print("    → Archaeologist analysis complete", flush=True)
-        time.sleep(2)
     except Exception as e:
         archaeologist_notes.append(f"Archaeologist error: {e}")
         print(f"    → ERROR: {e}", flush=True)
