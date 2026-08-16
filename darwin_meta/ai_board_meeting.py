@@ -216,7 +216,6 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         print(f"  [Statistician] {d['id']} ({i}/{len(targets)})...", flush=True)
         try:
             report = stat_agent.run(ctx, verified)
-            stat_reports.append(f"{d['id']}: {report['verdict']} — {report['recommendation'][:100]}")
             if isinstance(report, dict):
                 stat_reports.append(f"{d['id']}: {report.get('verdict', 'unknown')} — {str(report.get('recommendation', ''))[:100]}")
                 log_decision("statistician", d["id"], report.get("verdict", "unknown"),
@@ -239,10 +238,6 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         print(f"  [Sceptic] {d['id']} ({i}/{len(targets)})...", flush=True)
         try:
             report = scept_agent.run(ctx, evidence)
-            scept_reports.append(
-                f"{d['id']}: {report['verdict']} (kill_prob={report['kill_probability']:.2f}) — "
-                f"top attack: {report['attacks'][0]['attack'][:80] if report['attacks'] else 'none'}"
-            )
             if isinstance(report, dict):
                 verdict = report.get("verdict", "unknown")
                 kp = report.get("kill_probability", 0.0)
