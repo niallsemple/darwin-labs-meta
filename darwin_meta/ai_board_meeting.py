@@ -171,7 +171,7 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
 
     # --- STALE CANDIDATE DETECTION (deterministic, no LLM) ---
     print("  [Stale] Checking CANDIDATEs for staleness...", flush=True)
-    stale_summary = _stale_candidate_summary(lib)
+    stale_summary, stale_ids = _stale_candidate_summary(lib)
     print(f"    → {stale_summary.splitlines()[0] if stale_summary else 'no stale check'}", flush=True)
 
     # --- DECAY DETECTION (deterministic, no LLM) ---
@@ -273,7 +273,8 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
             log_decision("ceo", did, "build_queue")
         for did in ceo_decision.get("investigate_queue", []):
             log_decision("ceo", did, "investigate_queue")
-        for did in ceo_decision.get("stale_queue", []):
+        ceo_decision["stale_queue"] = stale_ids  # deterministic override: CEO cannot hallucinate stale IDs
+        for did in stale_ids:
             log_decision("ceo", did, "stale_queue")
         print("    → CEO synthesis complete", flush=True)
     except Exception as e:
