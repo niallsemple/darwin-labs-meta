@@ -2,7 +2,8 @@
 
 Replaces the static markdown generator with one that actually uses
 agents to analyse the library and produce a strategic daily report.
-Now includes Archaeologist (institutional memory) and Decay Detection.
+Now includes Archaeologist (institutional memory), Decay Detection,
+and daily stale-CANDIDATE re-evaluation.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from __future__ import annotations
 import json
 import time
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from darwin_meta.agents.ceo import CEOAgent
@@ -22,6 +23,69 @@ from darwin_meta.loops.decision_log import log_decision
 from laboratory.experiment import results_for_discovery, latest_metrics
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# --- Stale-CANDIDATE detection (deterministic) ---
+MAX_CANDIDATE_AGE_DAYS = 14
+MAX_CANDIDATE_EVIDENCE_STALE_DAYS = 7
+
+
+def _days_since(ts_str: str) -> int | None:
+    """Return days since ISO timestamp, or None if unparseable."""
+    try:
+        ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - ts).days
+    except Exception:
+        return None
+
+
+def _stale_candidate_summary(lib: list[dict]) -> str:
+    """Produce a deterministic stale-CANDIDATE report for the CEO.
+
+    A CANDIDATE is flagged stale if any of:
+    - Age > MAX_CANDIDATE_AGE_DAYS since creation with no status progress
+    - No evidence added in MAX_CANDIDATE_EVIDENCE_STALE_DAYS days
+    - Empty next_action (no defined work)
+    - Evidence count == 0 (raw hypothesis, no work done)
+    """
+    lines = []
+    candidates = [d for d in lib if d.get("status") == "CANDIDATE"]
+    if not candidates:
+        return "No CANDIDATEs in library."
+
+    stale_ids = []
+    for d in candidates:
+        reasons = []
+        age = _days_since(d.get("created", ""))
+        if age is not None and age > MAX_CANDIDATE_AGE_DAYS:
+            reasons.append(f"age {age}d > {MAX_CANDIDATE_AGE_DAYS}d")
+
+        evidence = d.get("evidence", [])
+        if evidence:
+            last_ev = _days_since(evidence[-1].get("date", ""))
+            if last_ev is not None and last_ev > MAX_CANDIDATE_EVIDENCE_STALE_DAYS:
+                reasons.append(f"last evidence {last_ev}d ago")
+        else:
+            reasons.append("zero evidence")
+
+        if not d.get("next_action", "").strip():
+            reasons.append("empty next_action")
+
+        if reasons:
+            stale_ids.append(d["id"])
+            lines.append(
+                f"- {d['id']} ({d.get('lab', '?')}) — {', '.join(reasons)} | "
+                f"evidence={len(evidence)} | age={age}d"
+            )
+
+    if not lines:
+        return f"All {len(candidates)} CANDIDATEs are active (no stale signals)."
+
+    header = f"STALE CANDIDATES ({len(stale_ids)}/{len(candidates)}):\n"
+    footer = (
+        f"\nRecommendation: demote {len(stale_ids)} stale CANDIDATE(s) to BACKLOG "
+        f"to free WIP slots for active work."
+    )
+    return header + "\n".join(lines) + footer
 
 
 def _verified_data_summary(d: dict) -> str:
@@ -100,10 +164,15 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         f"Total graveyard: {len(grave)}",
         "Status breakdown:",
     ]
-    for s in ["CANDIDATE", "TESTING", "SUPPORTED", "VALIDATED", "SHADOW",
+    for s in ["BACKLOG", "CANDIDATE", "TESTING", "SUPPORTED", "VALIDATED", "SHADOW",
               "MICRO_LIVE", "PROMOTED"]:
         if counts.get(s):
             lib_summary_lines.append(f"  {s}: {counts[s]}")
+
+    # --- STALE CANDIDATE DETECTION (deterministic, no LLM) ---
+    print("  [Stale] Checking CANDIDATEs for staleness...", flush=True)
+    stale_summary = _stale_candidate_summary(lib)
+    print(f"    → {stale_summary.splitlines()[0] if stale_summary else 'no stale check'}", flush=True)
 
     # --- DECAY DETECTION (deterministic, no LLM) ---
     print("  [Decay] Scanning for decay signals...", flush=True)
@@ -136,9 +205,6 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         print(f"    → ERROR: {e}", flush=True)
 
     # Run Statistician on each SUPPORTED+ discovery.
-    # The Statistician receives VERIFIED data — experiment results from the
-    # immutable store plus the record's metrics — and critiques believability.
-    # It is never the source of statistical truth.
     stat_reports = []
     stat_agent = StatisticianAgent(llm)
     targets = [d for d in lib if d["status"] in ("SUPPORTED", "VALIDATED", "SHADOW")]
@@ -183,7 +249,6 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
     # Run CEO synthesis
     print("  [CEO] Synthesising board meeting...", flush=True)
     ceo_agent = CEOAgent(llm)
-    # Include Archaeologist insights in CEO briefing
     arch_section = "\n".join(archaeologist_notes) if archaeologist_notes else "No institutional notes."
     agent_reports = (
         "STATISTICIAN REPORTS:\n" + "\n".join(stat_reports) + "\n\n"
@@ -193,18 +258,21 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         "ARCHAEOLOGIST NOTES:\n" + arch_section
     )
     try:
-        ceo_decision = ceo_agent.run("\n".join(lib_summary_lines), agent_reports)
+        ceo_decision = ceo_agent.run("\n".join(lib_summary_lines), agent_reports, stale_summary)
         for did in ceo_decision.get("kill_queue", []):
             log_decision("ceo", did, "kill_queue")
         for did in ceo_decision.get("build_queue", []):
             log_decision("ceo", did, "build_queue")
         for did in ceo_decision.get("investigate_queue", []):
             log_decision("ceo", did, "investigate_queue")
+        for did in ceo_decision.get("stale_queue", []):
+            log_decision("ceo", did, "stale_queue")
         print("    → CEO synthesis complete", flush=True)
     except Exception as e:
         ceo_decision = {
             "agenda": [], "build_queue": [], "kill_queue": [],
-            "investigate_queue": [], "ceo_commentary": f"CEO synthesis failed: {e}",
+            "investigate_queue": [], "stale_queue": [],
+            "ceo_commentary": f"CEO synthesis failed: {e}",
         }
         print(f"    → CEO ERROR: {e}", flush=True)
 
@@ -215,7 +283,7 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
     L.append("")
     L.append("```")
     L.append(f"library: {len(lib)} live discoveries   graveyard: {len(grave)} killed")
-    for s in ["CANDIDATE", "TESTING", "SUPPORTED", "VALIDATED", "SHADOW",
+    for s in ["BACKLOG", "CANDIDATE", "TESTING", "SUPPORTED", "VALIDATED", "SHADOW",
               "MICRO_LIVE", "PROMOTED"]:
         if counts.get(s):
             L.append(f"  {s:<12} {counts[s]}")
@@ -246,6 +314,13 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         L.append("")
         for did in ceo_decision["kill_queue"]:
             L.append(f"- `{did}`")
+        L.append("")
+
+    if ceo_decision.get("stale_queue"):
+        L.append("## STALE QUEUE (demote to BACKLOG)")
+        L.append("")
+        for did in ceo_decision["stale_queue"]:
+            L.append(f"- `{did}` — no progress; demote to BACKLOG to free WIP slot")
         L.append("")
 
     if ceo_decision.get("investigate_queue"):
