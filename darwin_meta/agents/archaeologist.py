@@ -94,15 +94,17 @@ class ArchaeologistAgent(BaseAgent):
     def _build_context(self, library: list[dict], graveyard: list[dict],
                        meta_logs: list[dict] | None) -> str:
         lines = ["=== LIVE DISCOVERIES ==="]
-        for d in library:
-            lines.append(f"{d['id']} | {d['lab']} | {d['status']} | {d['title']}")
-            lines.append(f"  Hypothesis: {d.get('hypothesis', '')[:100]}")
-            lines.append(f"  Kill criteria: {d.get('kill_criteria', '')[:80]}")
+        # Limit to most recent/important to fit 4096 ctx window
+        for d in library[-20:]:
+            lines.append(f"{d['id']} | {d['lab']} | {d['status']} | {d['title'][:80]}")
+            hyp = d.get('hypothesis', '')[:60]
+            lines.append(f"  Hyp: {hyp}")
 
-        lines.append("\n=== GRAVEYARD ===")
-        for d in graveyard[-10:]:  # Last 10 for brevity
-            lines.append(f"{d['id']} | {d['lab']} | {d['title']}")
-            lines.append(f"  Killed because: {d.get('kill_cause', 'unknown')[:120]}")
+        lines.append("\n=== GRAVEYARD (last 10) ===")
+        for d in graveyard[-10:]:
+            lines.append(f"{d['id']} | {d['lab']} | {d['title'][:80]}")
+            kill = d.get('kill_cause', 'unknown')[:80]
+            lines.append(f"  Killed: {kill}")
 
         # Compute basic stats locally too
         total = len(library) + len(graveyard)
