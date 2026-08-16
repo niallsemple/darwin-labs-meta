@@ -217,11 +217,15 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
         try:
             report = stat_agent.run(ctx, verified)
             stat_reports.append(f"{d['id']}: {report['verdict']} — {report['recommendation'][:100]}")
-            log_decision("statistician", d["id"], report["verdict"],
-                         {"n": report.get("n"), "p_value": report.get("p_value"),
-                          "concerns": report.get("concerns", [])[:3]})
-            print(f"    → {report['verdict']}", flush=True)
-            time.sleep(2)
+            if isinstance(report, dict):
+                stat_reports.append(f"{d['id']}: {report.get('verdict', 'unknown')} — {str(report.get('recommendation', ''))[:100]}")
+                log_decision("statistician", d["id"], report.get("verdict", "unknown"),
+                             {"n": report.get("n"), "p_value": report.get("p_value"),
+                              "concerns": report.get("concerns", [])[:3]})
+                print(f"    → {report.get('verdict', 'unknown')}", flush=True)
+            else:
+                stat_reports.append(f"{d['id']}: stat type error — got {type(report).__name__}")
+                print(f"    → TYPE ERROR: got {type(report).__name__}", flush=True)
         except Exception as e:
             stat_reports.append(f"{d['id']}: stat error — {e}")
             print(f"    → ERROR: {e}", flush=True)
@@ -239,11 +243,18 @@ def generate_ai_boardMeeting(library_path: Path, graveyard_path: Path,
                 f"{d['id']}: {report['verdict']} (kill_prob={report['kill_probability']:.2f}) — "
                 f"top attack: {report['attacks'][0]['attack'][:80] if report['attacks'] else 'none'}"
             )
-            log_decision("sceptic", d["id"], report["verdict"],
-                         {"kill_probability": report["kill_probability"],
-                          "n_attacks": len(report.get("attacks", []))})
-            print(f"    → {report['verdict']} (kill_prob={report['kill_probability']:.2f})", flush=True)
-            time.sleep(2)
+            if isinstance(report, dict):
+                verdict = report.get("verdict", "unknown")
+                kp = report.get("kill_probability", 0.0)
+                attacks = report.get("attacks", [])
+                top = attacks[0].get("attack", "none")[:80] if attacks else "none"
+                scept_reports.append(f"{d['id']}: {verdict} (kill_prob={kp:.2f}) — top attack: {top}")
+                log_decision("sceptic", d["id"], verdict,
+                             {"kill_probability": kp, "n_attacks": len(attacks)})
+                print(f"    → {verdict} (kill_prob={kp:.2f})", flush=True)
+            else:
+                scept_reports.append(f"{d['id']}: sceptic type error — got {type(report).__name__}")
+                print(f"    → TYPE ERROR: got {type(report).__name__}", flush=True)
         except Exception as e:
             scept_reports.append(f"{d['id']}: sceptic error — {e}")
             print(f"    → ERROR: {e}", flush=True)
