@@ -65,4 +65,4 @@ class StatisticianAgent(BaseAgent):
             },
             "required": ["verdict", "concerns", "recommendation"],
         }
-        return self._call(prompt, temperature=0.2, structured=True, schema=schema)
+        return self._call(prompt, temperature=0.2, structured=True, schema=schema, max_tokens=512)

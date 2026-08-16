@@ -62,4 +62,4 @@ class ScepticAgent(BaseAgent):
             },
             "required": ["verdict", "attacks", "kill_probability", "recommendation"],
         }
-        return self._call(prompt, temperature=0.5, structured=True, schema=schema)
+        return self._call(prompt, temperature=0.5, structured=True, schema=schema, max_tokens=512)
